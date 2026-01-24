@@ -1,0 +1,174 @@
+"""SQLAlchemy ORM models."""
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
+Base = declarative_base()
+
+
+class User(Base):
+    """User model."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(120), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="user")  # admin or user
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    created_backends = relationship(
+        "BackendServer", back_populates="created_by_user", foreign_keys="BackendServer.created_by"
+    )
+    created_rules = relationship(
+        "ProxyRule", back_populates="created_by_user", foreign_keys="ProxyRule.created_by"
+    )
+    audit_logs = relationship("AuditLog", back_populates="user")
+
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, username={self.username}, role={self.role})>"
+
+
+class BackendServer(Base):
+    """Backend server model."""
+
+    __tablename__ = "backend_servers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), unique=True, index=True, nullable=False)
+    ip = Column(String(45), nullable=False)  # IPv4 or IPv6
+    port = Column(Integer, nullable=False, default=80)
+    service_description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    created_by_user = relationship("User", back_populates="created_backends")
+    proxy_rules = relationship("ProxyRule", back_populates="backend")
+
+    __table_args__ = (UniqueConstraint("ip", "port", name="uq_backend_ip_port"),)
+
+    def __repr__(self) -> str:
+        return f"<BackendServer(id={self.id}, name={self.name}, ip={self.ip}:{self.port})>"
+
+
+class ProxyRule(Base):
+    """Proxy routing rule model."""
+
+    __tablename__ = "proxy_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    frontend_domain = Column(String(255), unique=True, index=True, nullable=False)
+    backend_id = Column(Integer, ForeignKey("backend_servers.id"), nullable=False)
+    access_control = Column(String(20), nullable=False, default="public")  # public or internal
+    ip_whitelist = Column(Text, nullable=True)  # JSON list of allowed IPs
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    backend = relationship("BackendServer", back_populates="proxy_rules")
+    created_by_user = relationship("User", back_populates="created_rules")
+
+    def __repr__(self) -> str:
+        return f"<ProxyRule(id={self.id}, domain={self.frontend_domain}, backend_id={self.backend_id})>"
+
+
+class SSLCertificate(Base):
+    """SSL certificate model."""
+
+    __tablename__ = "ssl_certificates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    domain = Column(String(255), unique=True, index=True, nullable=False)
+    cert_path = Column(String(500), nullable=False)
+    key_path = Column(String(500), nullable=False)
+    expiry_date = Column(DateTime, nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<SSLCertificate(domain={self.domain}, expiry={self.expiry_date})>"
+
+
+class AuditLog(Base):
+    """Audit log model for tracking changes."""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    action = Column(String(50), nullable=False)  # created, updated, deleted
+    resource_type = Column(String(50), nullable=False)  # user, backend, rule, cert, config
+    resource_id = Column(String(255), nullable=False)
+    changes = Column(Text, nullable=True)  # JSON with before/after values
+    ip_address = Column(String(45), nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="audit_logs")
+
+    def __repr__(self) -> str:
+        return (
+            f"<AuditLog(id={self.id}, action={self.action}, "
+            f"resource={self.resource_type}:{self.resource_id})>"
+        )
+
+
+class ProxyConfig(Base):
+    """Global proxy configuration model."""
+
+    __tablename__ = "proxy_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, index=True, nullable=False)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<ProxyConfig(key={self.key}, value={self.value})>"
+
+
+class Metric(Base):
+    """Metrics model for tracking proxy performance."""
+
+    __tablename__ = "metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    backend_id = Column(Integer, ForeignKey("backend_servers.id"), nullable=True, index=True)
+    request_count = Column(Integer, default=0)
+    avg_response_time = Column(Float, nullable=True)  # milliseconds
+    error_rate = Column(Float, nullable=True)  # percentage
+    status_2xx = Column(Integer, default=0)
+    status_3xx = Column(Integer, default=0)
+    status_4xx = Column(Integer, default=0)
+    status_5xx = Column(Integer, default=0)
+
+    def __repr__(self) -> str:
+        return (
+            f"<Metric(timestamp={self.timestamp}, backend_id={self.backend_id}, "
+            f"requests={self.request_count})>"
+        )

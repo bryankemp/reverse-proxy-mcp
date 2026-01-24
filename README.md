@@ -1,0 +1,252 @@
+# Nginx Manager
+
+A containerized Nginx reverse proxy management system with REST API, Model Context Protocol (MCP) server, and Flutter WebUI. Provides centralized control, monitoring, and configuration for your reverse proxy infrastructure.
+
+## Features
+
+- 🔄 **Dynamic Configuration** - Hot-reload proxy rules without container restart
+- 🌐 **REST API** - Hierarchical (v1) and matrix (v2) API endpoints for complete proxy management
+- 🤖 **MCP Integration** - Control proxy via Model Context Protocol for AI/LLM compatibility
+- 🎨 **Flutter WebUI** - Responsive web interface for proxy management
+- 🔐 **Role-Based Access Control** - Admin and user roles with fine-grained permissions
+- 📊 **Monitoring** - Real-time metrics, historical analytics, per-backend performance tracking
+- 📝 **Audit Logging** - Complete change history and user activity tracking
+- 🔒 **SSL Management** - Upload and manage SSL certificates with expiry monitoring
+- 🐳 **Docker Ready** - Multi-container setup with docker-compose orchestration
+- 📚 **Documentation** - Comprehensive Read the Docs documentation
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Nginx Proxy                             │
+│              (Dynamically configured from DB)                │
+└─────────────────────────────────────────────────────────────┘
+         ↑                    ↑                    ↑
+    ┌────────┐          ┌─────────┐         ┌──────────┐
+    │   API   │          │   MCP   │         │  WebUI   │
+    │ (FastAPI)          │ (FastMCP)        │ (Flutter) │
+    └────────┘          └─────────┘         └──────────┘
+         ↓                    ↓                    ↓
+    └─────────────────────────────────────────────────────────┘
+              ↓
+    ┌──────────────────────┐
+    │   SQLite Database    │
+    │                      │
+    │ - Users              │
+    │ - Backends           │
+    │ - Proxy Rules        │
+    │ - SSL Certificates   │
+    │ - Audit Logs         │
+    │ - Metrics            │
+    └──────────────────────┘
+```
+
+## Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Python 3.10+ (for local development)
+
+### Using Docker Compose
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/nginx-manager.git
+cd nginx-manager
+
+# Create environment configuration
+cp .env.example .env
+
+# Start all services
+docker-compose up -d
+
+# Access the WebUI
+# http://localhost:8080
+
+# API documentation
+# http://localhost:8000/docs
+```
+
+### Local Development
+
+```bash
+# Install dependencies
+pip install -e ".[dev]"
+
+# Set up pre-commit hooks
+pre-commit install
+
+# Run the API server
+python -m nginx_manager.api
+
+# Run tests
+pytest
+
+# Run linting and type checking
+black src && ruff check src && mypy src
+```
+
+## Project Structure
+
+```
+nginx-manager/
+├── src/nginx_manager/
+│   ├── api/                    # FastAPI application
+│   │   ├── v1/                 # REST API v1 endpoints
+│   │   ├── v2/                 # REST API v2 endpoints
+│   │   ├── dependencies.py     # FastAPI dependencies (auth, etc)
+│   │   └── main.py             # API entry point
+│   ├── mcp/                    # MCP server
+│   │   ├── server.py           # MCP server implementation
+│   │   └── tools.py            # MCP tool definitions
+│   ├── core/
+│   │   ├── config.py           # Configuration management
+│   │   ├── database.py         # Database setup and sessions
+│   │   ├── security.py         # Authentication and authorization
+│   │   └── nginx.py            # Nginx config generation and reload
+│   ├── models/
+│   │   ├── database.py         # SQLAlchemy ORM models
+│   │   └── schemas.py          # Pydantic request/response schemas
+│   ├── services/
+│   │   ├── backend.py          # Backend server management
+│   │   ├── proxy_rule.py       # Proxy rule management
+│   │   ├── certificate.py      # SSL certificate management
+│   │   ├── user.py             # User management
+│   │   ├── audit.py            # Audit logging
+│   │   └── metrics.py          # Metrics collection
+│   └── migrations/             # Alembic database migrations
+├── webui/                      # Flutter WebUI project
+├── docker-compose.yml          # Multi-container orchestration
+├── docs/                       # Read the Docs documentation
+├── tests/                      # Test suite
+├── Dockerfile.api              # API service Dockerfile
+├── Dockerfile.mcp              # MCP server Dockerfile
+└── nginx/
+    ├── Dockerfile              # Nginx service Dockerfile
+    └── nginx.conf.template     # Nginx configuration template
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# Database
+DATABASE_URL=sqlite:///./data/nginx_manager.db
+
+# JWT Configuration
+SECRET_KEY=your-secret-key-change-this
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# MCP Configuration
+MCP_HOST=0.0.0.0
+MCP_PORT=5000
+
+# Nginx Configuration
+NGINX_CONFIG_PATH=/etc/nginx/sites-enabled/proxy.conf
+NGINX_SOCKET_PATH=/var/run/nginx.sock
+```
+
+## API Documentation
+
+- **REST API v1** (Hierarchical): `/api/v1/docs`
+- **REST API v2** (Matrix): `/api/v2/docs`
+- **MCP Tools**: See documentation for available tools
+
+## Development Commands
+
+```bash
+# Format code
+black src
+
+# Lint code
+ruff check src
+
+# Type check
+mypy src
+
+# Run tests
+pytest
+
+# Run specific test file
+pytest tests/test_auth.py
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run only unit tests
+pytest -m unit
+
+# Build Docker image
+docker build -t nginx-manager-api -f Dockerfile.api .
+
+# Run Docker Compose
+docker-compose up
+```
+
+## Testing
+
+Run the full test suite:
+
+```bash
+pytest
+```
+
+Run specific test categories:
+
+```bash
+# Unit tests only
+pytest -m unit
+
+# Integration tests only
+pytest -m integration
+
+# End-to-end tests
+pytest -m e2e
+
+# Docker container tests
+pytest -m docker
+```
+
+## Documentation
+
+Full documentation is available in the `docs/` directory and deployed to Read the Docs.
+
+Key documentation files:
+- `docs/installation.rst` - Setup instructions
+- `docs/architecture.rst` - System architecture
+- `docs/api-reference.rst` - Complete API endpoint documentation
+- `docs/user-guide.rst` - WebUI usage guide
+- `docs/administration.rst` - User management and permissions
+
+## License
+
+BSD 3-Clause License - See LICENSE file for details.
+
+## Author
+
+Bryan Kemp (bryan@kempville.com)
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Run code quality checks
+5. Submit a pull request
+
+## Support
+
+- **Documentation**: https://nginx-manager.readthedocs.io
+- **Issues**: GitHub Issues
+- **Email**: bryan@kempville.com
