@@ -2,7 +2,6 @@
 
 import os
 from datetime import datetime
-from typing import Optional
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -16,38 +15,34 @@ class CertificateService:
     """Service for managing SSL certificates."""
 
     @staticmethod
-    def parse_certificate_expiry(cert_content: str) -> Optional[datetime]:
+    def parse_certificate_expiry(cert_content: str) -> datetime | None:
         """Parse certificate and extract expiry date.
-        
+
         Args:
             cert_content: PEM-encoded certificate content
-            
+
         Returns:
             Expiry datetime or None if parsing fails
         """
         try:
-            cert = x509.load_pem_x509_certificate(
-                cert_content.encode(), default_backend()
-            )
+            cert = x509.load_pem_x509_certificate(cert_content.encode(), default_backend())
             expiry = cert.not_valid_after()
             return datetime.fromisoformat(expiry.isoformat())
         except Exception:
             return None
 
     @staticmethod
-    def save_certificate_files(
-        domain: str, cert_content: str, key_content: str
-    ) -> tuple[str, str]:
+    def save_certificate_files(domain: str, cert_content: str, key_content: str) -> tuple[str, str]:
         """Save certificate and key files to disk.
-        
+
         Args:
             domain: Certificate domain name
             cert_content: PEM-encoded certificate
             key_content: PEM-encoded private key
-            
+
         Returns:
             Tuple of (cert_path, key_path)
-            
+
         Raises:
             IOError: If file writing fails
         """
@@ -71,14 +66,14 @@ class CertificateService:
         db: Session, domain: str, cert_content: str, key_content: str, user_id: int
     ) -> SSLCertificate:
         """Create and store a new certificate.
-        
+
         Args:
             db: Database session
             domain: Certificate domain
             cert_content: PEM-encoded certificate
             key_content: PEM-encoded private key
             user_id: ID of user uploading certificate
-            
+
         Returns:
             Created certificate record
         """
@@ -104,13 +99,13 @@ class CertificateService:
         return db_cert
 
     @staticmethod
-    def get_certificate_by_domain(db: Session, domain: str) -> Optional[SSLCertificate]:
+    def get_certificate_by_domain(db: Session, domain: str) -> SSLCertificate | None:
         """Get certificate by domain.
-        
+
         Args:
             db: Database session
             domain: Certificate domain
-            
+
         Returns:
             Certificate record or None
         """
@@ -124,11 +119,11 @@ class CertificateService:
     @staticmethod
     def delete_certificate(db: Session, domain: str) -> bool:
         """Delete certificate and its files.
-        
+
         Args:
             db: Database session
             domain: Certificate domain
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -148,23 +143,19 @@ class CertificateService:
         return True
 
     @staticmethod
-    def get_expiring_certificates(
-        db: Session, days_until_expiry: int = 30
-    ) -> list[SSLCertificate]:
+    def get_expiring_certificates(db: Session, days_until_expiry: int = 30) -> list[SSLCertificate]:
         """Get certificates expiring within specified days.
-        
+
         Args:
             db: Database session
             days_until_expiry: Number of days to check ahead
-            
+
         Returns:
             List of expiring certificates
         """
         from sqlalchemy import and_
 
-        cutoff_date = datetime.utcnow() + __import__("datetime").timedelta(
-            days=days_until_expiry
-        )
+        cutoff_date = datetime.utcnow() + __import__("datetime").timedelta(days=days_until_expiry)
 
         return (
             db.query(SSLCertificate)

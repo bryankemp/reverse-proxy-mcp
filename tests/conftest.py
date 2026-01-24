@@ -1,0 +1,141 @@
+"""Pytest configuration and shared fixtures."""
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from nginx_manager.api.main import create_app
+from nginx_manager.core.security import create_access_token, hash_password
+from nginx_manager.models.database import BackendServer, Base, ProxyRule, User
+
+
+@pytest.fixture(scope="session")
+def db_engine():
+    """Create test database engine."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    return engine
+
+
+@pytest.fixture
+def db(db_engine):
+    """Get test database session."""
+    connection = db_engine.connect()
+    transaction = connection.begin()
+    session = sessionmaker(bind=connection)(bind=connection)
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture
+def client(db):
+    """Create FastAPI test client."""
+    from nginx_manager.core.database import get_db
+
+    app = create_app()
+
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    return TestClient(app)
+
+
+@pytest.fixture
+def admin_user(db):
+    """Create test admin user."""
+    user = User(
+        username="admin",
+        email="admin@test.com",
+        password_hash=hash_password("admin123456"),
+        role="admin",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def regular_user(db):
+    """Create test regular user."""
+    user = User(
+        username="user",
+        email="user@test.com",
+        password_hash=hash_password("user123456"),
+        role="user",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def admin_token(admin_user):
+    """Create JWT token for admin user."""
+    return create_access_token(data={"sub": str(admin_user.id)})
+
+
+@pytest.fixture
+def user_token(regular_user):
+    """Create JWT token for regular user."""
+    return create_access_token(data={"sub": str(regular_user.id)})
+
+
+@pytest.fixture
+def backend_server(db, admin_user):
+    """Create test backend server."""
+    backend = BackendServer(
+        name="test-backend",
+        ip="192.168.1.100",
+        port=8080,
+        service_description="Test backend server",
+        is_active=True,
+        created_by=admin_user.id,
+    )
+    db.add(backend)
+    db.commit()
+    db.refresh(backend)
+    return backend
+
+
+@pytest.fixture
+def proxy_rule(db, admin_user, backend_server):
+    """Create test proxy rule."""
+    rule = ProxyRule(
+        frontend_domain="test.example.com",
+        backend_id=backend_server.id,
+        access_control="public",
+        ip_whitelist=None,
+        is_active=True,
+        created_by=admin_user.id,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+@pytest.fixture
+def auth_headers(admin_token):
+    """Get authorization headers with admin token."""
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def user_auth_headers(user_token):
+    """Get authorization headers with user token."""
+    return {"Authorization": f"Bearer {user_token}"}

@@ -1,12 +1,10 @@
 """User management endpoints."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from nginx_manager.api.dependencies import require_admin, require_user
-from nginx_manager.core import get_db, hash_password
+from nginx_manager.core import get_db
 from nginx_manager.models.database import User
 from nginx_manager.models.schemas import UserCreate, UserResponse, UserUpdate
 from nginx_manager.services.audit import AuditService
@@ -15,10 +13,10 @@ from nginx_manager.services.user import UserService
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=List[UserResponse])
+@router.get("", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db), current_user: User = Depends(require_admin)
-) -> List[UserResponse]:
+) -> list[UserResponse]:
     """List all users (admin only)."""
     return UserService.get_all_users(db)
 
@@ -49,9 +47,7 @@ def create_user(
     # Check if username already exists
     existing = UserService.get_user_by_username(db, user.username)
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Username already exists"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
 
     # Create user
     new_user = UserService.create_user(db, user)
@@ -73,7 +69,7 @@ def update_user(
     try:
         updated_user = UserService.update_user(db, user_id, user_update, current_user)
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
     if not updated_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -114,9 +110,7 @@ def change_password(
 
     success = UserService.change_password(db, user_id, old_password, new_password)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
 
     # Audit log
     AuditService.log_action(

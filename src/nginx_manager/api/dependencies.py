@@ -1,25 +1,36 @@
 """FastAPI dependencies for authentication and authorization."""
 
-from typing import Optional
-
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
+from starlette.requests import Request
 
 from nginx_manager.core import decode_token, get_db
 from nginx_manager.models.database import User
 
+security = HTTPBearer()
 
-async def get_current_user(
-    token: str = Depends(lambda: None), db: Session = Depends(get_db)
-) -> Optional[User]:
+
+async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
     """Get the current authenticated user from JWT token."""
-    # Note: This will be called with token from header in route
-    if not token:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    try:
+        scheme, token = auth_header.split(" ")
+        if scheme.lower() != "bearer":
+            raise ValueError() from None
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication scheme",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
 
     payload = decode_token(token)
     if payload is None:
@@ -29,13 +40,22 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:

@@ -1,7 +1,5 @@
 """User management service."""
 
-from typing import Optional
-
 from sqlalchemy.orm import Session
 
 from nginx_manager.core.security import hash_password, verify_password
@@ -27,12 +25,12 @@ class UserService:
         return db_user
 
     @staticmethod
-    def get_user_by_username(db: Session, username: str) -> Optional[User]:
+    def get_user_by_username(db: Session, username: str) -> User | None:
         """Get user by username."""
         return db.query(User).filter(User.username == username).first()
 
     @staticmethod
-    def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
+    def get_user_by_id(db: Session, user_id: int) -> User | None:
         """Get user by ID."""
         return db.query(User).filter(User.id == user_id).first()
 
@@ -44,7 +42,7 @@ class UserService:
     @staticmethod
     def update_user(
         db: Session, user_id: int, user_update: UserUpdate, current_user: User
-    ) -> Optional[User]:
+    ) -> User | None:
         """Update user (with role protection)."""
         user = UserService.get_user_by_id(db, user_id)
         if not user:
@@ -54,11 +52,7 @@ class UserService:
         if current_user.role != "admin" and current_user.id != user_id:
             raise PermissionError("Cannot modify other users")
 
-        if (
-            user_update.role
-            and user_update.role != user.role
-            and current_user.role != "admin"
-        ):
+        if user_update.role and user_update.role != user.role and current_user.role != "admin":
             raise PermissionError("Only admins can change roles")
 
         if user_update.email:
@@ -73,9 +67,7 @@ class UserService:
         return user
 
     @staticmethod
-    def change_password(
-        db: Session, user_id: int, old_password: str, new_password: str
-    ) -> bool:
+    def change_password(db: Session, user_id: int, old_password: str, new_password: str) -> bool:
         """Change user password."""
         user = UserService.get_user_by_id(db, user_id)
         if not user:

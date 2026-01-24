@@ -1,8 +1,5 @@
 """Proxy rule endpoints."""
 
-import json
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,10 +16,10 @@ from nginx_manager.models.schemas import (
 router = APIRouter(prefix="/proxy-rules", tags=["proxy-rules"])
 
 
-@router.get("", response_model=List[ProxyRuleResponse])
+@router.get("", response_model=list[ProxyRuleResponse])
 def list_proxy_rules(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
-) -> List[ProxyRuleResponse]:
+) -> list[ProxyRuleResponse]:
     """List all proxy rules."""
     return db.query(ProxyRule).filter(ProxyRule.is_active).all()
 
@@ -48,9 +45,7 @@ def create_proxy_rule(
 ) -> ProxyRuleResponse:
     """Create new proxy rule (admin only)."""
     # Check if rule with same domain exists
-    existing = (
-        db.query(ProxyRule).filter(ProxyRule.frontend_domain == rule.frontend_domain).first()
-    )
+    existing = db.query(ProxyRule).filter(ProxyRule.frontend_domain == rule.frontend_domain).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Domain already has a rule"
@@ -132,7 +127,7 @@ def reload_nginx(
     try:
         generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
         success, message = generator.apply_config(db)
-        
+
         if success:
             return {"status": "success", "message": message}
         else:
@@ -144,4 +139,4 @@ def reload_nginx(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Reload error: {str(e)}",
-        )
+        ) from e

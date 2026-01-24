@@ -1,8 +1,6 @@
 """Application configuration."""
 
-import json
-from typing import Any, List
-
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -45,14 +43,12 @@ class Settings(BaseSettings):
     logs_path: str = "./data/logs"
 
     # CORS Configuration
-    cors_origins: List[str] = ["http://localhost:8080", "http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:8080", "http://localhost:3000"]
     cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = ["*"]
-    cors_allow_headers: List[str] = ["*"]
+    cors_allow_methods: list[str] = ["*"]
+    cors_allow_headers: list[str] = ["*"]
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
     @property
     def database_url_async(self) -> str:

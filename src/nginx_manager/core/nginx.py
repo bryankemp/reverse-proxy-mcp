@@ -6,12 +6,11 @@ import os
 import shutil
 import subprocess
 from datetime import datetime
-from typing import Optional
 
 from jinja2 import Template
 from sqlalchemy.orm import Session
 
-from nginx_manager.models.database import BackendServer, ProxyRule, SSLCertificate
+from nginx_manager.models.database import BackendServer, ProxyRule
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +53,8 @@ http {
     gzip_vary on;
     gzip_proxied any;
     gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml text/javascript 
-               application/json application/javascript application/xml+rss 
+    gzip_types text/plain text/css text/xml text/javascript
+               application/json application/javascript application/xml+rss
                application/atom+xml image/svg+xml;
 
     # HTTP to HTTPS redirect
@@ -141,7 +140,7 @@ class NginxConfigGenerator:
 
     def __init__(self, config_path: str, backup_dir: str = "/etc/nginx/backup"):
         """Initialize Nginx config generator.
-        
+
         Args:
             config_path: Path to nginx.conf file
             backup_dir: Directory for config backups
@@ -152,10 +151,10 @@ class NginxConfigGenerator:
 
     def generate_config(self, db: Session) -> str:
         """Generate Nginx configuration from database.
-        
+
         Args:
             db: Database session
-            
+
         Returns:
             Generated Nginx configuration as string
         """
@@ -166,12 +165,6 @@ class NginxConfigGenerator:
         # Transform proxy rules for template
         proxy_rules = []
         for rule in proxy_rules_db:
-            # Convert domain to nginx regex pattern
-            domain_parts = rule.frontend_domain.split(".")
-            location_regex = (
-                "".join([f"(?:{part.replace('*', '[^.]*')}\\.)?" for part in domain_parts])
-                .rstrip("\\.")
-            )
 
             ip_list = []
             if rule.ip_whitelist:
@@ -180,14 +173,16 @@ class NginxConfigGenerator:
                 except (json.JSONDecodeError, TypeError):
                     ip_list = []
 
-            proxy_rules.append({
-                "frontend_domain": rule.frontend_domain,
-                "location_regex": rule.frontend_domain.replace(".", r"\.").replace("*", ".*"),
-                "backend_id": rule.backend_id,
-                "access_control": rule.access_control,
-                "ip_whitelist": rule.ip_whitelist,
-                "ip_list": ip_list,
-            })
+            proxy_rules.append(
+                {
+                    "frontend_domain": rule.frontend_domain,
+                    "location_regex": rule.frontend_domain.replace(".", r"\.").replace("*", ".*"),
+                    "backend_id": rule.backend_id,
+                    "access_control": rule.access_control,
+                    "ip_whitelist": rule.ip_whitelist,
+                    "ip_list": ip_list,
+                }
+            )
 
         # Render template
         template = Template(NGINX_TEMPLATE)
@@ -201,10 +196,10 @@ class NginxConfigGenerator:
 
     def validate_config(self, config_content: str) -> tuple[bool, str]:
         """Validate Nginx configuration syntax.
-        
+
         Args:
             config_content: Configuration content to validate
-            
+
         Returns:
             Tuple of (is_valid, error_message)
         """
@@ -237,7 +232,7 @@ class NginxConfigGenerator:
 
     def reload_nginx(self) -> tuple[bool, str]:
         """Reload Nginx with HUP signal.
-        
+
         Returns:
             Tuple of (success, message)
         """
@@ -261,10 +256,10 @@ class NginxConfigGenerator:
 
     def apply_config(self, db: Session) -> tuple[bool, str]:
         """Generate, validate, and apply new Nginx configuration.
-        
+
         Args:
             db: Database session
-            
+
         Returns:
             Tuple of (success, message)
         """

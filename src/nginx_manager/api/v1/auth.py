@@ -34,9 +34,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
 
     access_token = create_access_token(data={"sub": user.id})
 
-    return TokenResponse(
-        access_token=access_token, expires_in=get_token_expiry_time()
-    )
+    return TokenResponse(access_token=access_token, expires_in=get_token_expiry_time())
 
 
 @router.get("/user", response_model=UserResponse)
@@ -62,9 +60,7 @@ def logout() -> dict:
 
 
 @router.post("/change-password")
-def change_password(
-    old_password: str, new_password: str, token: str
-) -> dict:
+def change_password(old_password: str, new_password: str, token: str) -> dict:
     """Change user password."""
     # Placeholder - implement with proper token extraction and user lookup
     raise HTTPException(

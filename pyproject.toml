@@ -15,9 +15,9 @@ keywords = ["nginx", "reverse-proxy", "api", "mcp", "containerized"]
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
-    "sqlalchemy>=2.1.0",
+    "sqlalchemy>=2.0.0",
     "alembic>=1.15.0",
-    "pydantic>=2.8.0",
+    "pydantic[email]>=2.8.0",
     "pydantic-settings>=2.3.0",
     "python-jose[cryptography]>=3.3.0",
     "python-multipart>=0.0.9",
@@ -52,8 +52,14 @@ target-version = ["py311", "py312"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-select = ["E", "F", "I", "N", "W", "UP", "ASYNC", "S", "B"]
 exclude = [".git", ".venv", "venv", "__pycache__", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "ASYNC", "S", "B"]
+ignore = ["B008", "S104", "S105", "S101", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -1,14 +1,14 @@
 """Database models package."""
 
 from nginx_manager.models.database import (
-    Base,
-    User,
+    AuditLog,
     BackendServer,
+    Base,
+    Metric,
+    ProxyConfig,
     ProxyRule,
     SSLCertificate,
-    AuditLog,
-    ProxyConfig,
-    Metric,
+    User,
 )
 
 __all__ = [

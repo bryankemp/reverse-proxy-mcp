@@ -1,7 +1,6 @@
 """SQLAlchemy ORM models."""
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -14,8 +13,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -92,7 +90,10 @@ class ProxyRule(Base):
     created_by_user = relationship("User", back_populates="created_rules")
 
     def __repr__(self) -> str:
-        return f"<ProxyRule(id={self.id}, domain={self.frontend_domain}, backend_id={self.backend_id})>"
+        return (
+            f"<ProxyRule(id={self.id}, domain={self.frontend_domain}, "
+            f"backend_id={self.backend_id})>"
+        )
 
 
 class SSLCertificate(Base):

@@ -1,7 +1,5 @@
 """SSL certificate management endpoints."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -15,10 +13,10 @@ from nginx_manager.services.certificate import CertificateService
 router = APIRouter(prefix="/certificates", tags=["certificates"])
 
 
-@router.get("", response_model=List[SSLCertificateResponse])
+@router.get("", response_model=list[SSLCertificateResponse])
 def list_certificates(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
-) -> List[SSLCertificateResponse]:
+) -> list[SSLCertificateResponse]:
     """List all SSL certificates."""
     return CertificateService.get_all_certificates(db)
 
@@ -30,9 +28,7 @@ def get_certificate(
     """Get certificate details."""
     cert = CertificateService.get_certificate_by_domain(db, domain)
     if not cert:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
     return cert
 
 
@@ -75,12 +71,11 @@ async def upload_certificate(
         )
 
         return new_cert
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid certificate: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete("/{domain}", status_code=status.HTTP_204_NO_CONTENT)
@@ -92,9 +87,7 @@ def delete_certificate(
     """Delete certificate (admin only)."""
     success = CertificateService.delete_certificate(db, domain)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
 
     # Audit log
     AuditService.log_action(db, current_user, "deleted", "certificate", domain)
@@ -105,13 +98,11 @@ def check_certificate_expiry(
     domain: str, db: Session = Depends(get_db), current_user: User = Depends(require_user)
 ) -> dict:
     """Check certificate expiry status."""
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
     cert = CertificateService.get_certificate_by_domain(db, domain)
     if not cert:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
 
     if not cert.expiry_date:
         return {"domain": domain, "status": "unknown", "days_until_expiry": None}
@@ -147,9 +138,11 @@ def list_expiring_certificates(
             {
                 "domain": cert.domain,
                 "expiry_date": cert.expiry_date,
-                "days_remaining": (cert.expiry_date - __import__("datetime").datetime.utcnow()).days
-                if cert.expiry_date
-                else None,
+                "days_remaining": (
+                    (cert.expiry_date - __import__("datetime").datetime.utcnow()).days
+                    if cert.expiry_date
+                    else None
+                ),
             }
             for cert in certs
         ],

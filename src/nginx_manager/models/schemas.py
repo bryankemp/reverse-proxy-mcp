@@ -1,9 +1,8 @@
 """Pydantic request and response schemas."""
 
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # User Schemas
@@ -24,21 +23,20 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """User update schema."""
 
-    email: Optional[EmailStr] = None
-    role: Optional[str] = Field(None, pattern="^(admin|user)$")
-    is_active: Optional[bool] = None
+    email: EmailStr | None = None
+    role: str | None = Field(None, pattern="^(admin|user)$")
+    is_active: bool | None = None
 
 
 class UserResponse(UserBase):
     """User response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Backend Server Schemas
@@ -48,7 +46,7 @@ class BackendServerBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     ip: str = Field(..., min_length=7, max_length=45)
     port: int = Field(default=80, ge=1, le=65535)
-    service_description: Optional[str] = None
+    service_description: str | None = None
 
 
 class BackendServerCreate(BackendServerBase):
@@ -60,24 +58,23 @@ class BackendServerCreate(BackendServerBase):
 class BackendServerUpdate(BaseModel):
     """Backend server update schema."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    ip: Optional[str] = Field(None, min_length=7, max_length=45)
-    port: Optional[int] = Field(None, ge=1, le=65535)
-    service_description: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = Field(None, min_length=1, max_length=255)
+    ip: str | None = Field(None, min_length=7, max_length=45)
+    port: int | None = Field(None, ge=1, le=65535)
+    service_description: str | None = None
+    is_active: bool | None = None
 
 
 class BackendServerResponse(BackendServerBase):
     """Backend server response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
-    created_by: Optional[int] = None
+    created_by: int | None = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Proxy Rule Schemas
@@ -87,7 +84,7 @@ class ProxyRuleBase(BaseModel):
     frontend_domain: str = Field(..., min_length=5, max_length=255)
     backend_id: int
     access_control: str = Field(default="public", pattern="^(public|internal)$")
-    ip_whitelist: Optional[str] = None
+    ip_whitelist: str | None = None
 
 
 class ProxyRuleCreate(ProxyRuleBase):
@@ -99,24 +96,23 @@ class ProxyRuleCreate(ProxyRuleBase):
 class ProxyRuleUpdate(BaseModel):
     """Proxy rule update schema."""
 
-    frontend_domain: Optional[str] = Field(None, min_length=5, max_length=255)
-    backend_id: Optional[int] = None
-    access_control: Optional[str] = Field(None, pattern="^(public|internal)$")
-    ip_whitelist: Optional[str] = None
-    is_active: Optional[bool] = None
+    frontend_domain: str | None = Field(None, min_length=5, max_length=255)
+    backend_id: int | None = None
+    access_control: str | None = Field(None, pattern="^(public|internal)$")
+    ip_whitelist: str | None = None
+    is_active: bool | None = None
 
 
 class ProxyRuleResponse(ProxyRuleBase):
     """Proxy rule response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
-    created_by: Optional[int] = None
+    created_by: int | None = None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # SSL Certificate Schemas
@@ -137,22 +133,21 @@ class SSLCertificateCreate(BaseModel):
 class SSLCertificateUpdate(BaseModel):
     """SSL certificate update schema."""
 
-    expiry_date: Optional[datetime] = None
+    expiry_date: datetime | None = None
 
 
 class SSLCertificateResponse(SSLCertificateBase):
     """SSL certificate response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     cert_path: str
     key_path: str
-    expiry_date: Optional[datetime] = None
-    uploaded_by: Optional[int] = None
+    expiry_date: datetime | None = None
+    uploaded_by: int | None = None
     uploaded_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Configuration Schemas
@@ -160,53 +155,50 @@ class ConfigBase(BaseModel):
     """Base configuration schema."""
 
     key: str = Field(..., min_length=1, max_length=100)
-    value: Optional[str] = None
+    value: str | None = None
 
 
 class ConfigResponse(ConfigBase):
     """Configuration response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Audit Log Schemas
 class AuditLogResponse(BaseModel):
     """Audit log response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
-    user_id: Optional[int] = None
+    user_id: int | None = None
     action: str
     resource_type: str
     resource_id: str
-    changes: Optional[str] = None
-    ip_address: Optional[str] = None
+    changes: str | None = None
+    ip_address: str | None = None
     timestamp: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # Metrics Schemas
 class MetricResponse(BaseModel):
     """Metric response schema."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     timestamp: datetime
-    backend_id: Optional[int] = None
+    backend_id: int | None = None
     request_count: int
-    avg_response_time: Optional[float] = None
-    error_rate: Optional[float] = None
+    avg_response_time: float | None = None
+    error_rate: float | None = None
     status_2xx: int
     status_3xx: int
     status_4xx: int
     status_5xx: int
-
-    class Config:
-        from_attributes = True
 
 
 # Authentication Schemas
@@ -230,5 +222,5 @@ class ErrorResponse(BaseModel):
     """Error response schema."""
 
     detail: str
-    error_code: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    error_code: str | None = None
+    timestamp: datetime | None = None

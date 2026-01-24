@@ -1,7 +1,5 @@
 """Backend server endpoints."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,10 +15,10 @@ from nginx_manager.models.schemas import (
 router = APIRouter(prefix="/backends", tags=["backends"])
 
 
-@router.get("", response_model=List[BackendServerResponse])
+@router.get("", response_model=list[BackendServerResponse])
 def list_backends(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
-) -> List[BackendServerResponse]:
+) -> list[BackendServerResponse]:
     """List all backend servers."""
     return db.query(BackendServer).filter(BackendServer.is_active).all()
 
@@ -79,11 +77,7 @@ def update_backend(
 
     # Check if new name conflicts
     if backend_update.name and backend_update.name != db_backend.name:
-        existing = (
-            db.query(BackendServer)
-            .filter(BackendServer.name == backend_update.name)
-            .first()
-        )
+        existing = db.query(BackendServer).filter(BackendServer.name == backend_update.name).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Backend name already exists"
