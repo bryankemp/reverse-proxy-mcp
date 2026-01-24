@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from nginx_manager.api.v1 import auth
+from nginx_manager.api.v1 import auth, backends, proxy_rules
 from nginx_manager.core import create_all_tables, settings
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,8 @@ def create_app() -> FastAPI:
 
     # Include API routers
     app.include_router(auth.router, prefix=f"{settings.api_prefix}/v1")
+    app.include_router(backends.router, prefix=f"{settings.api_prefix}/v1")
+    app.include_router(proxy_rules.router, prefix=f"{settings.api_prefix}/v1")
 
     # Health check endpoint
     @app.get("/health")
