@@ -77,12 +77,11 @@ Data Layer:
 ### Setup
 
 ```bash
-# Create Python virtual environment
-python -m venv .venv
-source .venv/bin/activate  # or activate.fish on macOS
+# Install uv (fast Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install in editable mode with dev dependencies
-pip install -e ".[dev]"
+# Install dependencies with uv (no venv needed, uv manages it)
+uv sync --all-groups
 
 # Install git hooks for automated quality checks
 pre-commit install
@@ -91,14 +90,14 @@ pre-commit install
 ### Running the Application
 
 ```bash
-# Run API server locally
-python -m nginx_manager
+# Run API server locally with uv
+uv run python -m nginx_manager
 
 # Or with uvicorn directly
-uvicorn nginx_manager.api.main:create_app --reload --port 8000
+uv run uvicorn nginx_manager.api.main:create_app --reload --port 8000
 
 # Run MCP server (after API is implemented)
-python -m nginx_manager.mcp
+uv run python -m nginx_manager.mcp
 
 # Run with docker-compose (after Dockerfiles are complete)
 docker-compose up -d
@@ -108,37 +107,37 @@ docker-compose up -d
 
 ```bash
 # Format code with Black (line length: 100)
-black src tests
+uv run black src tests
 
 # Lint with Ruff
-ruff check src tests
+uv run ruff check src tests
 
 # Type check with mypy
-mypy src
+uv run mypy src
 
 # Run all checks together (pre-commit sequence)
-black src tests && ruff check src tests && mypy src
+uv run black src tests && uv run ruff check src tests && uv run mypy src
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage report
-pytest --cov=src --cov-report=term-missing
+uv run pytest --cov=src --cov-report=term-missing
 
 # Run specific test file
-pytest tests/test_auth.py
+uv run pytest tests/test_auth.py
 
 # Run specific test category
-pytest -m unit        # Unit tests only
-pytest -m integration # Integration tests only
-pytest -m e2e        # End-to-end tests
+uv run pytest -m unit        # Unit tests only
+uv run pytest -m integration # Integration tests only
+uv run pytest -m e2e        # End-to-end tests
 
 # Run only one test function
-pytest tests/test_auth.py::test_login_success
+uv run pytest tests/test_auth.py::test_login_success
 ```
 
 ### Database

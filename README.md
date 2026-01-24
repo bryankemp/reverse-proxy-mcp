@@ -46,7 +46,8 @@ A containerized Nginx reverse proxy management system with REST API, Model Conte
 
 ### Prerequisites
 - Docker and Docker Compose
-- Python 3.10+ (for local development)
+- Python 3.11+ (for local development)
+- `uv` package manager (recommended for fast installation)
 
 ### Using Docker Compose
 
@@ -71,20 +72,23 @@ docker-compose up -d
 ### Local Development
 
 ```bash
-# Install dependencies
-pip install -e ".[dev]"
+# Install uv (fast Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies with uv
+uv sync --all-groups
 
 # Set up pre-commit hooks
 pre-commit install
 
 # Run the API server
-python -m nginx_manager.api
+uv run python -m nginx_manager
 
 # Run tests
-pytest
+uv run pytest
 
 # Run linting and type checking
-black src && ruff check src && mypy src
+uv run black src && uv run ruff check src && uv run mypy src
 ```
 
 ## Project Structure
@@ -163,27 +167,29 @@ NGINX_SOCKET_PATH=/var/run/nginx.sock
 
 ## Development Commands
 
+Using `uv` (fast Python package manager):
+
 ```bash
 # Format code
-black src
+uv run black src
 
 # Lint code
-ruff check src
+uv run ruff check src
 
 # Type check
-mypy src
+uv run mypy src
 
 # Run tests
-pytest
+uv run pytest
 
 # Run specific test file
-pytest tests/test_auth.py
+uv run pytest tests/test_auth.py
 
 # Run with coverage
-pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 
 # Run only unit tests
-pytest -m unit
+uv run pytest -m unit
 
 # Build Docker image
 docker build -t nginx-manager-api -f Dockerfile.api .
