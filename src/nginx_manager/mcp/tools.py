@@ -8,9 +8,7 @@ Defines 21 tools across 5 categories:
 - Monitoring (2 tools)
 """
 
-from typing import Any
-
-from mcp.types import Tool, TextContent
+from mcp.types import Tool
 
 
 class ToolDefinitions:
@@ -446,3 +444,128 @@ class ToolDefinitions:
             21
         """
         return len(ToolDefinitions.get_all_tools())
+
+
+# Export TOOLS dictionary for handler binding
+TOOLS = {
+    # Backend Management (5 tools)
+    "list_backends": {
+        "name": "list_backends",
+        "description": "List all backend servers",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "create_backend": {
+        "name": "create_backend",
+        "description": "Create a new backend server",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "host": {"type": "string"},
+                "port": {"type": "integer"},
+                "protocol": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["name", "host", "port"],
+        },
+    },
+    "update_backend": {
+        "name": "update_backend",
+        "description": "Update an existing backend server",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "delete_backend": {
+        "name": "delete_backend",
+        "description": "Delete a backend server",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "get_backend": {
+        "name": "get_backend",
+        "description": "Get backend details by ID",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    # Proxy Rule Management (6 tools)
+    "list_proxy_rules": {
+        "name": "list_proxy_rules",
+        "description": "List all proxy rules",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "create_proxy_rule": {
+        "name": "create_proxy_rule",
+        "description": "Create a new proxy rule",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "update_proxy_rule": {
+        "name": "update_proxy_rule",
+        "description": "Update an existing proxy rule",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "delete_proxy_rule": {
+        "name": "delete_proxy_rule",
+        "description": "Delete a proxy rule",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "get_proxy_rule": {
+        "name": "get_proxy_rule",
+        "description": "Get proxy rule details by ID",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "reload_nginx": {
+        "name": "reload_nginx",
+        "description": "Reload Nginx configuration without restarting",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    # Certificate Management (4 tools)
+    "list_certificates": {
+        "name": "list_certificates",
+        "description": "List all SSL/TLS certificates",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "create_certificate": {
+        "name": "create_certificate",
+        "description": "Upload a new SSL/TLS certificate",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "delete_certificate": {
+        "name": "delete_certificate",
+        "description": "Delete a certificate",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "get_certificate": {
+        "name": "get_certificate",
+        "description": "Get certificate details by ID",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    # User & Configuration (4 tools)
+    "list_users": {
+        "name": "list_users",
+        "description": "List all users (admin only)",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "create_user": {
+        "name": "create_user",
+        "description": "Create a new user (admin only)",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "get_config": {
+        "name": "get_config",
+        "description": "Get current system configuration",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "update_config": {
+        "name": "update_config",
+        "description": "Update system configuration (admin only)",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    # Monitoring (2 tools)
+    "get_health": {
+        "name": "get_health",
+        "description": "Get system health status",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    "get_metrics": {
+        "name": "get_metrics",
+        "description": "Get system metrics",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+}

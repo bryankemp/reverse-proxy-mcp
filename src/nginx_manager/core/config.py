@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
     @property
+    def api_url(self) -> str:
+        """Get API URL for MCP client."""
+        protocol = "https" if not self.debug else "http"
+        return f"{protocol}://{self.api_host}:{self.api_port}"
+
+    @property
     def database_url_async(self) -> str:
         """Get async database URL."""
         if self.database_url.startswith("sqlite"):

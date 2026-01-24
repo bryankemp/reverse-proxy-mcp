@@ -7,7 +7,10 @@ import logging
 from typing import Any
 
 from mcp.server import Server
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent
+
+from nginx_manager.mcp.handlers import TOOL_HANDLERS
+from nginx_manager.mcp.tools import TOOLS
 
 logger = logging.getLogger(__name__)
 
@@ -26,44 +29,50 @@ class MCPServer:
         self._register_tools()
 
     def _register_tools(self) -> None:
-        """Register all 21 MCP tools."""
-        # Backend Management Tools (5)
-        self._register_backend_tools()
-        # Proxy Rules Tools (6)
-        self._register_proxy_tools()
-        # Certificate Tools (4)
-        self._register_cert_tools()
-        # User & Configuration Tools (4)
-        self._register_user_config_tools()
-        # Monitoring Tools (2)
-        self._register_monitoring_tools()
+        """Register all 21 MCP tools with their handlers."""
+        for tool_name, tool_def in TOOLS.items():
+            if tool_name in TOOL_HANDLERS:
+                self.server.add_tool(
+                    tool_def.name,
+                    tool_def.description,
+                    tool_def.inputSchema,
+                    self._create_tool_handler(tool_name),
+                )
+                logger.debug(f"Registered tool: {tool_name}")
+            else:
+                logger.warning(f"No handler found for tool: {tool_name}")
 
-        logger.info("Registered 21 MCP tools")
+        logger.info(f"Registered {len(TOOLS)} MCP tools with handlers")
 
-    def _register_backend_tools(self) -> None:
-        """Register backend management tools."""
-        # Placeholder for backend tools
-        pass
+    def _create_tool_handler(self, tool_name: str):
+        """Create handler wrapper for a tool.
 
-    def _register_proxy_tools(self) -> None:
-        """Register proxy rule tools."""
-        # Placeholder for proxy tools
-        pass
+        Args:
+            tool_name: Name of the tool
 
-    def _register_cert_tools(self) -> None:
-        """Register certificate management tools."""
-        # Placeholder for cert tools
-        pass
+        Returns:
+            Async handler function
+        """
+        handler = TOOL_HANDLERS[tool_name]
 
-    def _register_user_config_tools(self) -> None:
-        """Register user and configuration tools."""
-        # Placeholder for user/config tools
-        pass
+        async def tool_handler(arguments: dict[str, Any]) -> list[TextContent]:
+            """Execute tool with given arguments.
 
-    def _register_monitoring_tools(self) -> None:
-        """Register monitoring tools."""
-        # Placeholder for monitoring tools
-        pass
+            Args:
+                arguments: Tool arguments from MCP client
+
+            Returns:
+                Text content with tool result
+            """
+            try:
+                result = handler(**arguments)
+                return [TextContent(type="text", text=str(result))]
+            except Exception as e:
+                logger.error(f"Error executing tool {tool_name}: {e}")
+                error_result = {"status": "error", "message": str(e)}
+                return [TextContent(type="text", text=str(error_result))]
+
+        return tool_handler
 
     async def handle_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle incoming MCP request.
