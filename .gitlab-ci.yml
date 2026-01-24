@@ -8,15 +8,21 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   DOCKER_REGISTRY: "registry.gitlab.com"
   DOCKER_IMAGE: "${DOCKER_REGISTRY}/kempville/nginx-manager"
+  PYTHON_VERSION: "3.11"
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
 
 cache:
   paths:
     - .cache/pip
     - .venv
 
+image: python:3.11
+
 before_script:
   - python -m venv .venv
   - source .venv/bin/activate
+  - pip install --upgrade pip setuptools wheel
   - pip install -e ".[dev]"
 
 # Linting and Code Quality
@@ -65,9 +71,9 @@ test:e2e:
 # Build Docker Image
 build:docker:
   stage: build
-  image: docker:latest
+  image: docker:27
   services:
-    - docker:dind
+    - docker:27-dind
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:

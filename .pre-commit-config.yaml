@@ -1,20 +1,20 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.12.1
     hooks:
       - id: black
         language_version: python3.10
         args: ["--line-length=100"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.0
+    rev: v0.8.1
     hooks:
       - id: ruff
         args: ["--line-length=100"]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.1.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -25,11 +25,11 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.14.0
     hooks:
       - id: mypy
-        additional_dependencies: ["types-all"]
-        args: ["src", "--python-version=3.10"]
+        additional_dependencies: ["types-requests", "types-jinja2"]
+        args: ["src", "--python-version=3.11"]
         files: ^src/
 
 ci:
