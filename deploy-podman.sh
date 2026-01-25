@@ -53,7 +53,7 @@ ENVEOF
 
 # 4. Build image on remote with podman
 echo "🏗️  Building container image with podman..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && podman build -t nginx-manager:latest ."
+ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && podman build --no-cache -t nginx-manager:latest ."
 
 # 5. Create required directories
 echo "📂 Creating required directories..."
@@ -63,17 +63,18 @@ ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR/data $REMOTE_DIR/certs $RE
 echo "⏹️  Stopping existing container..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "podman stop nginx-manager 2>/dev/null || true && podman rm nginx-manager 2>/dev/null || true"
 
-# 7. Start new container with podman
+# 7. Start new container with podman (using higher ports due to privilege restrictions)
 echo "🎬 Starting new container..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && podman run -d \
+echo "  Using ports: 8080->80, 8443->443, 5100->3000"
+ssh "$REMOTE_USER@$REMOTE_HOST" 'cd $HOME/nginx-manager && podman run -d \
   --name nginx-manager \
   --restart=always \
-  -p 80:80 \
-  -p 443:443 \
+  -p 8080:80 \
+  -p 8443:443 \
   -p 5100:3000 \
-  -v \$(pwd)/data:/app/data \
-  -v \$(pwd)/certs:/etc/nginx/certs \
-  -v \$(pwd)/logs:/var/log \
+-v '\''$(pwd)'/data:/app/data:Z \
+  -v '\''$(pwd)'/certs:/etc/nginx/certs:Z \
+  -v '\''$(pwd)'/logs:/var/log:Z \\
   --env-file .env \
   nginx-manager:latest"
 

@@ -5,7 +5,7 @@
 
 set -e
 
-REMOTE_HOST="turbo.kempville.com"
+REMOTE_HOST="grimlock.kempville.com"
 REMOTE_USER="bryan"
 REMOTE_DIR="~/nginx-manager"
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,9 +40,9 @@ DEBUG=false
 LOG_LEVEL=INFO
 DATABASE_URL=sqlite:///./data/nginx_manager.db
 SECRET_KEY=$(openssl rand -hex 32)
-ADMIN_EMAIL=admin@turbo.kempville.com
+ADMIN_EMAIL=admin@grimlock.kempville.com
 ADMIN_PASSWORD=$(openssl rand -base64 12)
-CORS_ORIGINS='http://turbo.kempville.com:5100,https://turbo.kempville.com:443,http://turbo.kempville.com:80'
+CORS_ORIGINS='http://grimlock.kempville.com:5100,https://grimlock.kempville.com,http://grimlock.kempville.com'
 API_PORT=8000
 MCP_PORT=5000
 NGINX_WORKER_PROCESSES=auto
@@ -54,30 +54,34 @@ ENVEOF
 
 # 4. Build image on remote (using podman if docker not available)
 echo "🏗️  Building container image..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && (docker build -t nginx-manager:latest . 2>/dev/null || podman build -t nginx-manager:latest .)"
+ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker build -t nginx-manager:latest ."
 
 # 5. Stop existing container if running
 echo "⏹️  Stopping existing container..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "(docker stop nginx-manager 2>/dev/null || podman stop nginx-manager 2>/dev/null) && (docker rm nginx-manager 2>/dev/null || podman rm nginx-manager 2>/dev/null) || true"
+ssh "$REMOTE_USER@$REMOTE_HOST" "docker stop nginx-manager 2>/dev/null || true && docker rm nginx-manager 2>/dev/null || true"
 
-# 6. Start new container
+# 6. Ensure certs exist
+echo "🔐 Ensuring SSL certs..."
+ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR/certs && cd $REMOTE_DIR/certs && [ -f server.crt ] || openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -nodes -subj '/CN=grimlock.kempville.com' && chmod 644 server.crt && chmod 600 server.key"
+
+# 7. Start new container
 echo "🎬 Starting new container..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && (docker run -d \\ 2>/dev/null || podman run -d \\
-  --name nginx-manager \\
-  --restart unless-stopped \\
-  -p 80:80 \\
-  -p 443:443 \\
-  -p 5100:3000 \\
-  -v \\$(pwd)/data:/app/data \\
-  -v \\$(pwd)/certs:/etc/nginx/certs \\
-  -v \\$(pwd)/logs:/var/log \\
-  --env-file .env \\
+ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker run -d \
+  --name nginx-manager \
+  --restart unless-stopped \
+  -p 80:80 \
+  -p 443:443 \
+  -p 5100:3000 \
+  -v \$(pwd)/data:/app/data \
+  -v \$(pwd)/certs:/etc/nginx/certs \
+  -v \$(pwd)/logs:/var/log \
+  --env-file .env \
   nginx-manager:latest"
 
 # 7. Verify deployment
 echo "✅ Verifying deployment..."
 sleep 5
-if ssh "$REMOTE_USER@$REMOTE_HOST" "curl -f http://localhost/health"; then
+if ssh "$REMOTE_USER@$REMOTE_HOST" "curl -f http://localhost/health && curl -kfs https://localhost/health >/dev/null"; then
   echo "✨ Deployment successful!"
 else
   echo "❌ Health check failed. Check logs with: docker-compose logs"
