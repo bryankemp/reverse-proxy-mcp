@@ -22,6 +22,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
     if credentials.username == "admin" and credentials.password == "password":
         # Create or get admin user from database
         from nginx_manager.core.security import hash_password
+
         user = db.query(User).filter(User.username == "admin").first()
         if not user:
             user = User(
@@ -29,7 +30,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
                 email="admin@nginx-manager.local",
                 password_hash=hash_password("password"),
                 role="admin",
-                is_active=True
+                is_active=True,
             )
             db.add(user)
             db.commit()
@@ -48,10 +49,10 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
                 "full_name": "",
                 "is_active": user.is_active,
                 "created_at": user.created_at.isoformat(),
-                "updated_at": user.updated_at.isoformat()
-            }
+                "updated_at": user.updated_at.isoformat(),
+            },
         }
-    
+
     # Fall back to database lookup for other users
     user = db.query(User).filter(User.username == credentials.username).first()
 

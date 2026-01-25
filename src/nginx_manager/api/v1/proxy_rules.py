@@ -61,6 +61,16 @@ def create_proxy_rule(
     db.add(db_rule)
     db.commit()
     db.refresh(db_rule)
+
+    # Auto-reload Nginx after rule creation
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Rule created but Nginx reload failed: {message}",
+        )
+
     return db_rule
 
 
@@ -101,6 +111,16 @@ def update_proxy_rule(
 
     db.commit()
     db.refresh(db_rule)
+
+    # Auto-reload Nginx after rule update
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Rule updated but Nginx reload failed: {message}",
+        )
+
     return db_rule
 
 
@@ -117,6 +137,15 @@ def delete_proxy_rule(
 
     db_rule.is_active = False
     db.commit()
+
+    # Auto-reload Nginx after rule deletion
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Rule deleted but Nginx reload failed: {message}",
+        )
 
 
 @router.post("/reload")

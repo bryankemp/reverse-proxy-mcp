@@ -169,7 +169,7 @@ class NginxConfigGenerator:
             ip_list = []
             if rule.ip_whitelist:
                 try:
-                    ip_list = json.loads(rule.ip_whitelist)
+                    ip_list = json.loads(str(rule.ip_whitelist))
                 except (json.JSONDecodeError, TypeError):
                     ip_list = []
 

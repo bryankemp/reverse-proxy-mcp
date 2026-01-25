@@ -35,19 +35,9 @@ class AuthProvider extends ChangeNotifier {
       if (storedToken != null && storedToken.isNotEmpty) {
         _token = storedToken;
         await _apiService.setToken(storedToken);
-
-        // Optionally verify token is still valid by checking health
-        try {
-          final health = await _apiService.getHealth();
-          if (health.isHealthy) {
-            _isLoggedIn = true;
-            notifyListeners();
-            return;
-          }
-        } catch (e) {
-          // Token might be expired, clear it
-          await logout();
-        }
+        _isLoggedIn = true;
+        notifyListeners();
+        return;
       }
 
       _isLoggedIn = false;
@@ -167,20 +157,9 @@ class AuthProvider extends ChangeNotifier {
       if (storedToken != null && storedToken.isNotEmpty) {
         _token = storedToken;
         await _apiService.setToken(storedToken);
-
-        // Verify token is still valid
-        try {
-          final health = await _apiService.getHealth();
-          if (health.isHealthy) {
-            _isLoggedIn = true;
-            notifyListeners();
-            return true;
-          }
-        } catch (e) {
-          // Token expired
-          await logout();
-          return false;
-        }
+        _isLoggedIn = true;
+        notifyListeners();
+        return true;
       }
 
       _isLoggedIn = false;

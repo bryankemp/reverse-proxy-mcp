@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from nginx_manager.api.dependencies import require_admin, require_user
 from nginx_manager.core import get_db
+from nginx_manager.core.nginx import NginxConfigGenerator
 from nginx_manager.models.database import BackendServer, User
 from nginx_manager.models.schemas import (
     BackendServerCreate,
@@ -60,6 +61,16 @@ def create_backend(
     db.add(db_backend)
     db.commit()
     db.refresh(db_backend)
+
+    # Auto-reload Nginx after backend creation
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Backend created but Nginx reload failed: {message}",
+        )
+
     return db_backend
 
 
@@ -96,6 +107,16 @@ def update_backend(
 
     db.commit()
     db.refresh(db_backend)
+
+    # Auto-reload Nginx after backend update
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Backend updated but Nginx reload failed: {message}",
+        )
+
     return db_backend
 
 
@@ -112,6 +133,15 @@ def delete_backend(
 
     db_backend.is_active = False
     db.commit()
+
+    # Auto-reload Nginx after backend deletion
+    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+    success, message = generator.apply_config(db)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Backend deleted but Nginx reload failed: {message}",
+        )
 
 
 @router.post("/{backend_id}/test")

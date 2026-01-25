@@ -1,18 +1,12 @@
 /// Application configuration constants
 
 class AppConfig {
-  // API Configuration
-  static const String apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://window.location.host/api/v1',
-  );
+  // API Configuration - served from same port as web UI via /api/v1
+  static const String apiBaseUrl = '/api/v1';
   
-  /// Get API base URL dynamically based on current host
+  /// Get API base URL
   static String getApiBaseUrl() {
-    // If not using string.fromEnvironment, use current hostname
-    return apiBaseUrl.contains('window.location') 
-        ? '/api/v1'  // Relative path uses current domain
-        : apiBaseUrl;
+    return apiBaseUrl;
   }
 
   static const String appName = 'Nginx Manager';

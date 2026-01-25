@@ -150,77 +150,101 @@ class AdminDashboard extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Nginx Manager Admin',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Nginx Manager Admin',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 32),
+                    Wrap(
+                      spacing: 24,
+                      runSpacing: 24,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 420,
+                          height: 280,
+                          child: AdminCard(
+                            title: 'Backend Servers',
+                            icon: Icons.storage,
+                            onTap: () async {
+                              await context.read<BackendProvider>().fetchBackends();
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => const BackendListDialog(),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 420,
+                          height: 280,
+                          child: AdminCard(
+                            title: 'Proxy Rules',
+                            icon: Icons.domain,
+                            onTap: () async {
+                              await context.read<RuleProvider>().fetchRules();
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => const RuleListDialog(),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 420,
+                          height: 280,
+                          child: AdminCard(
+                            title: 'SSL Certificates',
+                            icon: Icons.security,
+                            onTap: () async {
+                              await context.read<CertificateProvider>().fetchCertificates();
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => const CertificateListDialog(),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 420,
+                          height: 280,
+                          child: AdminCard(
+                            title: 'System Health',
+                            icon: Icons.health_and_safety,
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => const HealthCheckDialog(),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
-              const SizedBox(height: 32),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                crossAxisSpacing: 24,
-                mainAxisSpacing: 24,
-                children: [
-                  AdminCard(
-                    title: 'Backend Servers',
-                    icon: Icons.storage,
-                    onTap: () async {
-                      await context.read<BackendProvider>().fetchBackends();
-                      if (context.mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const BackendListDialog(),
-                        );
-                      }
-                    },
-                  ),
-                  AdminCard(
-                    title: 'Proxy Rules',
-                    icon: Icons.domain,
-                    onTap: () async {
-                      await context.read<RuleProvider>().fetchRules();
-                      if (context.mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const RuleListDialog(),
-                        );
-                      }
-                    },
-                  ),
-                  AdminCard(
-                    title: 'SSL Certificates',
-                    icon: Icons.security,
-                    onTap: () async {
-                      await context.read<CertificateProvider>().fetchCertificates();
-                      if (context.mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const CertificateListDialog(),
-                        );
-                      }
-                    },
-                  ),
-                  AdminCard(
-                    title: 'System Health',
-                    icon: Icons.health_and_safety,
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const HealthCheckDialog(),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -263,6 +287,72 @@ class AdminCard extends StatelessWidget {
 class BackendListDialog extends StatelessWidget {
   const BackendListDialog();
 
+  Future<void> _showCreateBackendForm(BuildContext context) async {
+    final nameCtl = TextEditingController();
+    final hostCtl = TextEditingController();
+    final portCtl = TextEditingController(text: '80');
+    String protocol = 'http';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Create Backend Server'),
+          content: StatefulBuilder(
+            builder: (ctx, setState) => SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+                  const SizedBox(height: 8),
+                  TextField(controller: hostCtl, decoration: const InputDecoration(labelText: 'Host/IP')),
+                  const SizedBox(height: 8),
+                  TextField(controller: portCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Port')), 
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: protocol,
+                    items: const [
+                      DropdownMenuItem(value: 'http', child: Text('http')),
+                      DropdownMenuItem(value: 'https', child: Text('https')),
+                    ],
+                    onChanged: (v) => setState(() => protocol = v ?? 'http'),
+                    decoration: const InputDecoration(labelText: 'Protocol'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      final name = nameCtl.text.trim();
+      final host = hostCtl.text.trim();
+      final port = int.tryParse(portCtl.text.trim()) ?? 80;
+      if (name.isEmpty || host.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and Host are required')));
+        return;
+      }
+      final provider = context.read<BackendProvider>();
+      final ok = await provider.createBackend(name: name, host: host, port: port, protocol: protocol);
+      if (!context.mounted) return;
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backend created')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Create failed')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -273,14 +363,18 @@ class BackendListDialog extends StatelessWidget {
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Add Backend',
+              icon: const Icon(Icons.add),
+              onPressed: () => _showCreateBackendForm(context),
+            ),
+          ],
         ),
         body: Consumer<BackendProvider>(
           builder: (context, provider, _) {
             if (provider.isLoading) {
               return const Center(child: CircularProgressIndicator());
-            }
-            if (provider.backends.isEmpty) {
-              return const Center(child: Text('No backend servers'));
             }
             return ListView.builder(
               itemCount: provider.backends.length,
@@ -289,7 +383,24 @@ class BackendListDialog extends StatelessWidget {
                 return ListTile(
                   title: Text(backend.name),
                   subtitle: Text('${backend.host}:${backend.port}'),
-                  trailing: Text(backend.protocol),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(backend.protocol),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Delete',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () async {
+                          final ok = await context.read<BackendProvider>().deleteBackend(backend.id);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(ok ? 'Backend deleted' : 'Delete failed')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 );
               },
             );
@@ -303,6 +414,61 @@ class BackendListDialog extends StatelessWidget {
 class RuleListDialog extends StatelessWidget {
   const RuleListDialog();
 
+  Future<void> _showCreateRuleForm(BuildContext context) async {
+    final domainCtl = TextEditingController();
+    final backendCtl = TextEditingController();
+    final pathCtl = TextEditingController(text: '/');
+    String ruleType = 'reverse_proxy';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create Proxy Rule'),
+        content: StatefulBuilder(
+          builder: (ctx, setState) => SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+                const SizedBox(height: 8),
+                TextField(controller: backendCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Backend ID')),
+                const SizedBox(height: 8),
+                TextField(controller: pathCtl, decoration: const InputDecoration(labelText: 'Path Pattern')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: ruleType,
+                  items: const [
+                    DropdownMenuItem(value: 'reverse_proxy', child: Text('reverse_proxy')),
+                  ],
+                  onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
+                  decoration: const InputDecoration(labelText: 'Rule Type'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final domain = domainCtl.text.trim();
+      final backendId = int.tryParse(backendCtl.text.trim());
+      final path = pathCtl.text.trim().isEmpty ? '/' : pathCtl.text.trim();
+      if (domain.isEmpty || backendId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain and Backend ID are required')));
+        return;
+      }
+      final ok = await context.read<RuleProvider>().createRule(domain: domain, backendId: backendId, pathPattern: path, ruleType: ruleType);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Rule created' : 'Create failed')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -313,14 +479,18 @@ class RuleListDialog extends StatelessWidget {
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Add Rule',
+              icon: const Icon(Icons.add),
+              onPressed: () => _showCreateRuleForm(context),
+            ),
+          ],
         ),
         body: Consumer<RuleProvider>(
           builder: (context, provider, _) {
             if (provider.isLoading) {
               return const Center(child: CircularProgressIndicator());
-            }
-            if (provider.rules.isEmpty) {
-              return const Center(child: Text('No proxy rules'));
             }
             return ListView.builder(
               itemCount: provider.rules.length,
@@ -328,8 +498,18 @@ class RuleListDialog extends StatelessWidget {
                 final rule = provider.rules[index];
                 return ListTile(
                   title: Text(rule.domain),
-                  subtitle: Text('Backend ID: ${rule.backendId}'),
-                  trailing: Text(rule.ruleType),
+                  subtitle: Text('Backend ID: ${rule.backendId}  •  Path: ${rule.pathPattern}'),
+                  trailing: IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      final ok = await context.read<RuleProvider>().deleteRule(rule.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ok ? 'Rule deleted' : 'Delete failed')),
+                      );
+                    },
+                  ),
                 );
               },
             );
@@ -343,6 +523,49 @@ class RuleListDialog extends StatelessWidget {
 class CertificateListDialog extends StatelessWidget {
   const CertificateListDialog();
 
+  Future<void> _showCreateCertForm(BuildContext context) async {
+    final domainCtl = TextEditingController();
+    final descCtl = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Certificate (metadata)'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+              const SizedBox(height: 8),
+              TextField(controller: descCtl, decoration: const InputDecoration(labelText: 'Description (optional)')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final domain = domainCtl.text.trim();
+      if (domain.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain is required')));
+        return;
+      }
+      final ok = await context.read<CertificateProvider>().createCertificate(
+        name: domain,
+        domain: domain,
+        certificate: '',
+        privateKey: '',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Certificate saved' : 'Save failed')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -353,14 +576,18 @@ class CertificateListDialog extends StatelessWidget {
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'Add Certificate',
+              icon: const Icon(Icons.add),
+              onPressed: () => _showCreateCertForm(context),
+            ),
+          ],
         ),
         body: Consumer<CertificateProvider>(
           builder: (context, provider, _) {
             if (provider.isLoading) {
               return const Center(child: CircularProgressIndicator());
-            }
-            if (provider.certificates.isEmpty) {
-              return const Center(child: Text('No certificates'));
             }
             return ListView.builder(
               itemCount: provider.certificates.length,
@@ -369,7 +596,17 @@ class CertificateListDialog extends StatelessWidget {
                 return ListTile(
                   title: Text(cert.domain),
                   subtitle: Text(cert.expiryStatus),
-                  trailing: Text('${cert.expiringInDays} days'),
+                  trailing: IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      final ok = await context.read<CertificateProvider>().deleteCertificate(cert.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ok ? 'Certificate deleted' : 'Delete failed')),
+                      );
+                    },
+                  ),
                 );
               },
             );

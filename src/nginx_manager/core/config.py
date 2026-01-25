@@ -47,10 +47,10 @@ class Settings(BaseSettings):
     cors_allow_credentials: bool = True
     cors_allow_methods: list[str] = ["*"]
     cors_allow_headers: list[str] = ["*"]
-    
+
     def get_cors_origins(self) -> list[str]:
         """Parse comma-separated CORS origins."""
-        return [origin.strip() for origin in self.cors_origins.split(',')]
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
     model_config = ConfigDict(env_file=".env", case_sensitive=False)
 

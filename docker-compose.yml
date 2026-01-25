@@ -8,11 +8,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "5100:3000"
+      - "5100:8000"
     volumes:
       - ./data:/app/data
       - ./certs:/etc/nginx/certs
       - ./logs:/var/log
+      - ./webui/build/web:/app/webui/build/web:ro
     environment:
       - DEBUG=false
       - DATABASE_URL=sqlite:///./data/nginx_manager.db
