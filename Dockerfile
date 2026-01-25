@@ -1,5 +1,5 @@
 # Stage 1: Flutter web build
-FROM cirrusci/flutter:latest AS flutter_build
+FROM ghcr.io/cirruslabs/flutter:latest AS flutter_build
 WORKDIR /app/webui
 COPY webui/pubspec.* ./
 COPY webui ./
@@ -13,9 +13,9 @@ RUN apk add --no-cache nginx supervisor curl
 WORKDIR /app
 
 # Copy Python app
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
 # Copy Flutter web output to Nginx
 COPY --from=flutter_build /app/webui/build/web /var/www/html
