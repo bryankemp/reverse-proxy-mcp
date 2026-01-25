@@ -42,11 +42,15 @@ class Settings(BaseSettings):
     certs_path: str = "./data/certs"
     logs_path: str = "./data/logs"
 
-    # CORS Configuration
-    cors_origins: list[str] = ["http://localhost:8080", "http://localhost:3000"]
+    # CORS Configuration - comma-separated in env
+    cors_origins: str = "http://localhost:8080,http://localhost:3000"
     cors_allow_credentials: bool = True
     cors_allow_methods: list[str] = ["*"]
     cors_allow_headers: list[str] = ["*"]
+    
+    def get_cors_origins(self) -> list[str]:
+        """Parse comma-separated CORS origins."""
+        return [origin.strip() for origin in self.cors_origins.split(',')]
 
     model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
