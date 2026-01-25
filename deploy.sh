@@ -5,7 +5,7 @@
 
 set -e
 
-REMOTE_HOST="slag.kempville.com"
+REMOTE_HOST="turbo.kempville.com"
 REMOTE_USER="bryan"
 REMOTE_DIR="~/nginx-manager"
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,9 +40,9 @@ DEBUG=false
 LOG_LEVEL=INFO
 DATABASE_URL=sqlite:///./data/nginx_manager.db
 SECRET_KEY=$(openssl rand -hex 32)
-ADMIN_EMAIL=admin@slug.kempville.com
+ADMIN_EMAIL=admin@turbo.kempville.com
 ADMIN_PASSWORD=$(openssl rand -base64 12)
-CORS_ORIGINS='http://slag.kempville.com:8080,https://slag.kempville.com:8443'
+CORS_ORIGINS='http://turbo.kempville.com:5100,https://turbo.kempville.com:443,http://turbo.kempville.com:80'
 API_PORT=8000
 MCP_PORT=5000
 NGINX_WORKER_PROCESSES=auto
@@ -65,8 +65,9 @@ echo "🎬 Starting new container..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker run -d \\
   --name nginx-manager \\
   --restart unless-stopped \\
-  -p 8080:80 \\
-  -p 8443:443 \\
+  -p 80:80 \\
+  -p 443:443 \\
+  -p 5100:3000 \\
   -v \\$(pwd)/data:/app/data \\
   -v \\$(pwd)/certs:/etc/nginx/certs \\
   -v \\$(pwd)/logs:/var/log \\
@@ -87,9 +88,10 @@ echo ""
 echo "📝 Deployment Summary:"
 echo "  Host: $REMOTE_HOST"
 echo "  Directory: $REMOTE_DIR"
-echo "  WebUI: http://$REMOTE_HOST:8080"
-echo "  API Docs: http://$REMOTE_HOST:8080/docs"
-echo "  HTTPS: https://$REMOTE_HOST:8443 (use self-signed cert)"
+echo "  WebUI/Admin: http://$REMOTE_HOST:5100 (Flutter admin interface)"
+echo "  HTTP Proxy: http://$REMOTE_HOST:80 (reverse proxy)"
+echo "  HTTPS Proxy: https://$REMOTE_HOST:443 (reverse proxy with HTTPS)"
+echo "  API Docs: http://$REMOTE_HOST:5100/docs (available via admin UI)"
 echo ""
 echo "To view logs: ssh $REMOTE_USER@$REMOTE_HOST 'docker logs -f nginx-manager'"
 echo "To stop: ssh $REMOTE_USER@$REMOTE_HOST 'docker stop nginx-manager'"
