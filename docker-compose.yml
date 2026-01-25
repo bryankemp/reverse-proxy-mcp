@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  nginx-manager:
+    build: .
+    image: nginx-manager:latest
+    container_name: nginx-manager
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data:/app/data
+      - ./certs:/etc/nginx/certs
+      - ./logs:/var/log
+    environment:
+      - DEBUG=false
+      - DATABASE_URL=sqlite:///./data/nginx_manager.db
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:80,http://localhost:443}
+      - LOG_LEVEL=INFO
+      - API_PORT=8000
+      - MCP_PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

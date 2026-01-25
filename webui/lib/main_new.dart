@@ -9,6 +9,11 @@ import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/backends_screen.dart';
+import 'screens/rules_screen.dart';
+import 'screens/certificates_screen.dart';
+import 'screens/users_screen.dart';
+import 'screens/audit_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +83,15 @@ class MyApp extends StatelessWidget {
           ),
         ),
         home: const AppRouter(),
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
+          '/backends': (context) => const BackendsScreen(),
+          '/rules': (context) => const RulesScreen(),
+          '/certificates': (context) => const CertificatesScreen(),
+          '/users': (context) => const UsersScreen(),
+          '/audit': (context) => const AuditScreen(),
+        },
       ),
     );
   }
