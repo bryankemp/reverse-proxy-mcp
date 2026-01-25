@@ -30,13 +30,7 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY supervisord.conf /etc/supervisord.conf
 
 # Initialize database and create admin user on startup
-RUN mkdir -p /app/data && python -c "
-from nginx_manager.core.database import create_all_tables
-try:
-    create_all_tables()
-except:
-    pass
-"
+RUN mkdir -p /app/data && python -c 'from nginx_manager.core.database import create_all_tables; create_all_tables()' 2>/dev/null || true
 
 # Expose ports
 EXPOSE 80 443
