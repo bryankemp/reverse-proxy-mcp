@@ -21,7 +21,9 @@ RUN pip install --no-cache-dir .
 COPY --from=flutter_build /app/webui/build/web /var/www/html
 
 # Create necessary directories
-RUN mkdir -p /var/log/nginx /var/log/supervisor /data /etc/nginx/conf.d
+RUN mkdir -p /var/log/nginx /var/log/supervisor /var/log /app/data /etc/nginx/conf.d && \
+    touch /var/log/nginx/access.log /var/log/nginx/error.log && \
+    chmod -R 777 /var/log/nginx /var/log/supervisor /var/log
 
 # Copy Nginx config
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
