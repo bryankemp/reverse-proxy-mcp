@@ -25,11 +25,18 @@ RUN mkdir -p /var/log/nginx /var/log/supervisor /data /etc/nginx/conf.d
 
 # Copy Nginx config
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY nginx/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 # Copy Supervisord config
 COPY supervisord.conf /etc/supervisord.conf
+
+# Initialize database and create admin user on startup
+RUN mkdir -p /app/data && python -c "
+from nginx_manager.core.database import create_all_tables
+try:
+    create_all_tables()
+except:
+    pass
+"
 
 # Expose ports
 EXPOSE 80 443
@@ -37,5 +44,5 @@ EXPOSE 80 443
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost/health || exit 1
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Run supervisord directly
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
