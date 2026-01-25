@@ -4,8 +4,16 @@ class AppConfig {
   // API Configuration
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'http://window.location.host/api/v1',
   );
+  
+  /// Get API base URL dynamically based on current host
+  static String getApiBaseUrl() {
+    // If not using string.fromEnvironment, use current hostname
+    return apiBaseUrl.contains('window.location') 
+        ? '/api/v1'  // Relative path uses current domain
+        : apiBaseUrl;
+  }
 
   static const String appName = 'Nginx Manager';
   static const String appVersion = '1.0.0';

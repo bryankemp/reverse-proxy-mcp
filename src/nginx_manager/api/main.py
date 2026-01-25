@@ -1,20 +1,53 @@
 """FastAPI application factory."""
 
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from nginx_manager.api.v1 import auth, backends, certificates, config, proxy_rules, users
 from nginx_manager.core import create_all_tables, settings
+from nginx_manager.core.database import SessionLocal
+from nginx_manager.core.security import hash_password
+from nginx_manager.models.database import User
 
 logger = logging.getLogger(__name__)
+
+
+def _initialize_admin_user() -> None:
+    """Initialize admin user from environment variables if not exists."""
+    try:
+        db = SessionLocal()
+        admin_email = os.getenv("ADMIN_EMAIL", "admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "password")
+        
+        # Check if admin user exists
+        existing = db.query(User).filter(User.username == admin_email).first()
+        if not existing:
+            # Create admin user
+            admin = User(
+                username=admin_email,
+                email=f"{admin_email}@nginx-manager.local",
+                password_hash=hash_password(admin_password),
+                role="admin",
+                is_active=True
+            )
+            db.add(admin)
+            db.commit()
+            logger.info(f"Created admin user: {admin_email}")
+        db.close()
+    except Exception as e:
+        logger.error(f"Failed to initialize admin user: {e}")
 
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     # Create database tables
     create_all_tables()
+    
+    # Initialize admin user
+    _initialize_admin_user()
 
     app = FastAPI(
         title=settings.app_name,

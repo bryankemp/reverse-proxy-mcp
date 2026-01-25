@@ -87,15 +87,35 @@ class BackendProvider extends ChangeNotifier {
   }
 
   /// Update backend
-  Future<bool> updateBackend(BackendServer backend) async {
+  Future<bool> updateBackend({
+    required int id,
+    required String name,
+    required String host,
+    required int port,
+    String protocol = 'http',
+    String description = '',
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      final updated = await _apiService.updateBackend(backend.id, backend);
+      final backend = BackendServer(
+        id: id,
+        name: name,
+        host: host,
+        port: port,
+        protocol: protocol,
+        description: description,
+        isActive: true,
+        createdBy: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final updated = await _apiService.updateBackend(id, backend);
       
-      final index = _backends.indexWhere((b) => b.id == backend.id);
+      final index = _backends.indexWhere((b) => b.id == id);
       if (index >= 0) {
         _backends[index] = updated;
       }

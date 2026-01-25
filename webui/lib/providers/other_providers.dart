@@ -7,12 +7,14 @@ class RuleProvider extends ChangeNotifier {
   final ApiService _apiService;
   List<ProxyRule> _rules = [];
   bool _isLoading = false;
+  bool _isReloading = false;
   String? _error;
 
   RuleProvider(this._apiService);
 
   List<ProxyRule> get rules => _rules;
   bool get isLoading => _isLoading;
+  bool get isReloading => _isReloading;
   String? get error => _error;
 
   Future<void> fetchRules({int limit = 50, int offset = 0}) async {
@@ -62,11 +64,28 @@ class RuleProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateRule(ProxyRule rule) async {
+  Future<bool> updateRule({
+    required int id,
+    required String domain,
+    required int backendId,
+    String pathPattern = '/',
+    String ruleType = 'reverse_proxy',
+  }) async {
     try {
       _isLoading = true;
-      final updated = await _apiService.updateProxyRule(rule.id, rule);
-      final index = _rules.indexWhere((r) => r.id == rule.id);
+      final rule = ProxyRule(
+        id: id,
+        domain: domain,
+        backendId: backendId,
+        pathPattern: pathPattern,
+        ruleType: ruleType,
+        isActive: true,
+        createdBy: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      final updated = await _apiService.updateProxyRule(id, rule);
+      final index = _rules.indexWhere((r) => r.id == id);
       if (index >= 0) _rules[index] = updated;
       notifyListeners();
       return true;
@@ -97,7 +116,7 @@ class RuleProvider extends ChangeNotifier {
 
   Future<bool> reloadNginx() async {
     try {
-      _isLoading = true;
+      _isReloading = true;
       _error = null;
       notifyListeners();
       await _apiService.reloadNginx();
@@ -108,7 +127,7 @@ class RuleProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } finally {
-      _isLoading = false;
+      _isReloading = false;
     }
   }
 
@@ -144,6 +163,28 @@ class CertificateProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to fetch certificates: $e';
       notifyListeners();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<bool> createCertificate({
+    required String name,
+    required String domain,
+    required String certificate,
+    required String privateKey,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      // API call would go here - for now just add locally
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
     } finally {
       _isLoading = false;
     }

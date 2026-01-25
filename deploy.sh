@@ -28,7 +28,6 @@ rsync -avz --delete \
   --exclude='.pytest_cache' \
   --exclude='htmlcov' \
   --exclude='.mypy_cache' \
-  --exclude='webui/build' \
   --exclude='webui/.dart_tool' \
   --exclude='.env' \
   "$LOCAL_DIR/" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"

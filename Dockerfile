@@ -1,12 +1,4 @@
-# Stage 1: Flutter web build
-FROM ghcr.io/cirruslabs/flutter:latest AS flutter_build
-WORKDIR /app/webui
-COPY webui/pubspec.* ./
-COPY webui ./
-RUN flutter pub get
-RUN flutter build web --release --no-tree-shake-icons
-
-# Stage 2: Python app with Nginx
+# Stage 1: Python app with Nginx
 FROM python:3.11-alpine
 RUN apk add --no-cache nginx supervisor curl
 
@@ -17,8 +9,8 @@ COPY pyproject.toml README.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir .
 
-# Copy Flutter web output to Nginx
-COPY --from=flutter_build /app/webui/build/web /var/www/html
+# Copy pre-built Flutter web output to Nginx
+COPY webui/build/web /var/www/html
 
 # Create necessary directories
 RUN mkdir -p /var/log/nginx /var/log/supervisor /var/log /app/data /etc/nginx/conf.d && \

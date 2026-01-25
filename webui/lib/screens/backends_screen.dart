@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/backend_provider.dart';
-import '../models/backend_server.dart';
+import '../models/models.dart';
 import '../widgets/app_drawer.dart';
 
 class BackendsScreen extends StatefulWidget {

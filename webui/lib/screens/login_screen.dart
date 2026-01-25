@@ -10,7 +10,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
@@ -18,10 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedEmail();
+    _loadSavedUsername();
   }
 
-  Future<void> _loadSavedEmail() async {
+  Future<void> _loadSavedUsername() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final storage = auth.toString().contains('StorageService') 
         ? null 
@@ -29,13 +29,13 @@ class _LoginScreenState extends State<LoginScreen> {
     
     final saved = context.read<AuthProvider>().toString();
     if (saved.isNotEmpty) {
-      _emailController.text = saved;
+      _usernameController.text = saved;
       _rememberMe = true;
     }
   }
 
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final success = await auth.login(
-      email: _emailController.text,
+      email: _usernameController.text,
       password: _passwordController.text,
       rememberMe: _rememberMe,
     );
@@ -85,15 +85,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 48),
                     TextField(
-                      controller: _emailController,
+                      controller: _usernameController,
                       decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: const Icon(Icons.email),
+                        labelText: 'Username',
+                        prefixIcon: const Icon(Icons.person),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       enabled: !authProvider.isLoading,
                     ),
                     const SizedBox(height: 16),
@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }

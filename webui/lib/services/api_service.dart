@@ -40,7 +40,7 @@ class ApiService {
 
   void _initializeDio() {
     final baseOptions = BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
+      baseUrl: AppConfig.getApiBaseUrl(),
       connectTimeout: Duration(milliseconds: AppConfig.connectionTimeout),
       receiveTimeout: Duration(milliseconds: AppConfig.receiveTimeout),
       sendTimeout: Duration(milliseconds: AppConfig.sendTimeout),
@@ -94,7 +94,7 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Login failed',
+        message: e.response?.data?['detail'] ?? 'Login failed',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -123,7 +123,7 @@ class ApiService {
       return list.map((item) => BackendServer.fromJson(item as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch backends',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch backends',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -137,7 +137,7 @@ class ApiService {
       return BackendServer.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch backend',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch backend',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -166,7 +166,7 @@ class ApiService {
       return BackendServer.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to create backend',
+        message: e.response?.data?['detail'] ?? 'Failed to create backend',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -180,7 +180,7 @@ class ApiService {
       return BackendServer.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to update backend',
+        message: e.response?.data?['detail'] ?? 'Failed to update backend',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -193,7 +193,7 @@ class ApiService {
       await _dio.delete('/backends/$id');
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to delete backend',
+        message: e.response?.data?['detail'] ?? 'Failed to delete backend',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -213,7 +213,7 @@ class ApiService {
       return list.map((item) => ProxyRule.fromJson(item as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch proxy rules',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch proxy rules',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -227,7 +227,7 @@ class ApiService {
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch proxy rule',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch proxy rule',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -254,7 +254,7 @@ class ApiService {
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to create proxy rule',
+        message: e.response?.data?['detail'] ?? 'Failed to create proxy rule',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -268,7 +268,7 @@ class ApiService {
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to update proxy rule',
+        message: e.response?.data?['detail'] ?? 'Failed to update proxy rule',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -281,7 +281,7 @@ class ApiService {
       await _dio.delete('/proxy-rules/$id');
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to delete proxy rule',
+        message: e.response?.data?['detail'] ?? 'Failed to delete proxy rule',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -294,7 +294,7 @@ class ApiService {
       await _dio.post('/config/reload');
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to reload Nginx',
+        message: e.response?.data?['detail'] ?? 'Failed to reload Nginx',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -314,7 +314,7 @@ class ApiService {
       return list.map((item) => Certificate.fromJson(item as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch certificates',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch certificates',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -328,7 +328,7 @@ class ApiService {
       return Certificate.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch certificate',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch certificate',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -341,7 +341,7 @@ class ApiService {
       await _dio.delete('/certificates/$id');
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to delete certificate',
+        message: e.response?.data?['detail'] ?? 'Failed to delete certificate',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -357,7 +357,7 @@ class ApiService {
       return HealthStatus.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch health',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch health',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -375,7 +375,7 @@ class ApiService {
       return list.map((item) => Metrics.fromJson(item as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data['detail'] ?? 'Failed to fetch metrics',
+        message: e.response?.data?['detail'] ?? 'Failed to fetch metrics',
         statusCode: e.response?.statusCode,
         originalError: e,
       );

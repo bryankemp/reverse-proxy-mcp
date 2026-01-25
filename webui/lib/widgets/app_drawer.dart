@@ -31,13 +31,13 @@ class AppDrawer extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Logged in as ${auth.user?.email ?? "Unknown"}',
+                      'Logged in as ${auth.currentUser?.email ?? "Unknown"}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
                       ),
                     ),
-                    if (auth.user?.role == 'admin')
+                    if (auth.currentUser?.role == 'admin')
                       const Text(
                         'Administrator',
                         style: TextStyle(
@@ -85,7 +85,7 @@ class AppDrawer extends StatelessWidget {
           ),
           Consumer<AuthProvider>(
             builder: (context, auth, _) {
-              if (auth.user?.role == 'admin') {
+              if (auth.currentUser?.role == 'admin') {
                 return Column(
                   children: [
                     const Divider(),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/certificate_provider.dart';
-import '../models/certificate.dart';
+import '../providers/other_providers.dart';
+import '../models/models.dart';
 import '../widgets/app_drawer.dart';
 
 class CertificatesScreen extends StatefulWidget {
@@ -187,11 +187,11 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
 
               return Card(
                 child: ListTile(
-                  title: Text(cert.name),
+                  title: Text(cert.domain),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Domain: ${cert.domain}'),
+                      Text('Description: ${cert.description}'),
                       Text(
                         expiryStatus,
                         style: TextStyle(

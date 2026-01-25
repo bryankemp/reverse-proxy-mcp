@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/rule_provider.dart';
-import '../models/proxy_rule.dart';
+import '../providers/other_providers.dart';
+import '../models/models.dart';
 import '../widgets/app_drawer.dart';
 
 class RulesScreen extends StatefulWidget {
@@ -97,7 +97,7 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _showEditDialog(ProxyRule rule) {
-    _nameController.text = rule.name;
+    _nameController.text = rule.domain;
     _domainController.text = rule.domain;
     _backendIdController.text = rule.backendId.toString();
 
@@ -234,8 +234,8 @@ class _RulesScreenState extends State<RulesScreen> {
               final rule = provider.rules[index];
               return Card(
                 child: ListTile(
-                  title: Text(rule.name),
-                  subtitle: Text('${rule.domain} → Backend ${rule.backendId}'),
+                  title: Text(rule.domain),
+                  subtitle: Text('Backend ${rule.backendId}'),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -246,10 +246,8 @@ class _RulesScreenState extends State<RulesScreen> {
                         child: Text(rule.isActive ? 'Disable' : 'Enable'),
                         onTap: () => provider.updateRule(
                           id: rule.id,
-                          name: rule.name,
                           domain: rule.domain,
                           backendId: rule.backendId,
-                          isActive: !rule.isActive,
                         ),
                       ),
                       PopupMenuItem(
