@@ -13,6 +13,14 @@ SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
 
 echo "🚀 Deploying Nginx Manager to $REMOTE_HOST..."
 
+# 0. Build Flutter web (release)
+if command -v flutter >/dev/null 2>&1; then
+  echo "🛠️  Building Flutter web (release)..."
+  (cd "$LOCAL_DIR/webui" && flutter build web --release --no-tree-shake-icons)
+else
+  echo "⚠️  Flutter not found locally; assuming webui/build/web is already a release build"
+fi
+
 # 1. Create remote directory
 echo "📁 Creating remote directory..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR"

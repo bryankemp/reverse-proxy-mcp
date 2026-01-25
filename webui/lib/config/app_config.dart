@@ -39,7 +39,8 @@ class AppConfig {
   static const int retryDelaySeconds = 2;
 
   // Features
-  static const bool enableLogging = true;
+  // Logging is disabled by default in release builds; can be enabled via --dart-define=APP_DEBUG=true
+  static const bool enableLogging = bool.fromEnvironment('APP_DEBUG', defaultValue: false);
   static const bool enableAnalytics = false;
 
   // Roles

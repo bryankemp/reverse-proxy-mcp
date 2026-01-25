@@ -87,10 +87,12 @@ class AuthProvider extends ChangeNotifier {
       await _apiService.setToken(token);
       await _storage.saveToken(token);
 
-      // Handle remember me
-      if (rememberMe) {
+      // Handle remember me (sanitize clearly bad values)
+      final sanitized = email.trim();
+      final looksCorrupted = sanitized.startsWith('Instance of');
+      if (rememberMe && !looksCorrupted && sanitized.isNotEmpty) {
         await _storage.saveRememberMe(true);
-        await _storage.saveEmail(email);
+        await _storage.saveEmail(sanitized);
       } else {
         await _storage.saveRememberMe(false);
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -22,15 +23,36 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadSavedUsername() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final storage = auth.toString().contains('StorageService') 
-        ? null 
-        : null;
-    
-    final saved = context.read<AuthProvider>().toString();
-    if (saved.isNotEmpty) {
-      _usernameController.text = saved;
-      _rememberMe = true;
+    try {
+      final storage = Provider.of<StorageService>(context, listen: false);
+      final saved = storage.getSavedEmail();
+      final remember = storage.getRememberMe();
+
+      // If a corrupted string was persisted by an older build, wipe it and the remember flag
+      if (saved != null && saved.startsWith('Instance of')) {
+        await storage.saveEmail('');
+        await storage.saveRememberMe(false);
+        setState(() {
+          _usernameController.text = '';
+          _rememberMe = false;
+        });
+        return;
+      }
+
+      // Prefill only when Remember Me was explicitly enabled and a value exists
+      if (remember && saved != null && saved.isNotEmpty) {
+        setState(() {
+          _usernameController.text = saved;
+          _rememberMe = true;
+        });
+      } else {
+        setState(() {
+          _usernameController.text = '';
+          _rememberMe = remember;
+        });
+      }
+    } catch (_) {
+      // ignore; proceed without prefill
     }
   }
 

@@ -125,15 +125,26 @@ class AdminDashboard extends StatelessWidget {
         title: const Text('Nginx Manager'),
         elevation: 0,
         actions: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: TextButton(
-                onPressed: () {
-                  context.read<AuthProvider>().logout();
-                  Navigator.of(context).pushReplacementNamed('/');
-                },
-                child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) => Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                child: Row(
+                  children: [
+                    Text(
+                      auth.currentUser?.username ?? 'User',
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton(
+                      onPressed: () {
+                        context.read<AuthProvider>().logout();
+                        Navigator.of(context).pushReplacementNamed('/');
+                      },
+                      child: const Text('Logout', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
