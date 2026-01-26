@@ -22,7 +22,7 @@ NGINX_TEMPLATE = """# Auto-generated Nginx proxy configuration
 # Backend upstream definitions
 {% for backend in backends %}
 upstream backend_{{ backend.id }} {
-    server {{ backend.protocol }}://{{ backend.ip }}:{{ backend.port }};
+    server {{ backend.ip }}:{{ backend.port }};
 }
 {% endfor %}
 
@@ -196,6 +196,9 @@ class NginxConfigGenerator:
     def validate_config(self, config_content: str) -> tuple[bool, str]:
         """Validate Nginx configuration syntax.
 
+        Since we're generating a proxy.conf fragment that gets included by the main
+        nginx.conf, we need to write it to a temp location and test the overall config.
+
         Args:
             config_content: Configuration content to validate
 
@@ -208,9 +211,10 @@ class NginxConfigGenerator:
             with open(temp_path, "w") as f:
                 f.write(config_content)
 
-            # Test syntax
+            # Test the main nginx config (which includes our proxy.conf)
+            # We use -t flag which tests without starting nginx
             result = subprocess.run(
-                ["nginx", "-t", "-c", temp_path],
+                ["nginx", "-t"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -270,16 +274,11 @@ class NginxConfigGenerator:
             logger.info("Generating new Nginx configuration...")
             new_config = self.generate_config(db)
 
-            # Validate new config
-            logger.info("Validating configuration syntax...")
-            is_valid, validation_msg = self.validate_config(new_config)
-            if not is_valid:
-                return False, f"Validation failed: {validation_msg}"
-
-            # Backup current config
+            # Backup current config if it exists
+            backup_path = None
             if os.path.exists(self.config_path):
                 timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-                backup_path = f"{self.backup_dir}/nginx.conf.{timestamp}"
+                backup_path = f"{self.backup_dir}/proxy.conf.{timestamp}"
                 shutil.copy2(self.config_path, backup_path)
                 logger.info(f"Backed up current config to {backup_path}")
 
@@ -289,6 +288,26 @@ class NginxConfigGenerator:
             with open(self.config_path, "w") as f:
                 f.write(new_config)
 
+            # Validate by testing nginx config
+            logger.info("Validating Nginx configuration...")
+            result = subprocess.run(
+                ["nginx", "-t"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            
+            if result.returncode != 0:
+                # Validation failed, restore backup
+                logger.error(f"Validation failed: {result.stderr}")
+                if os.path.exists(backup_path):
+                    shutil.copy2(backup_path, self.config_path)
+                    logger.info("Restored previous config due to validation failure")
+                log_nginx_operation("validate", False, result.stderr or "Unknown error")
+                return False, f"Validation failed: {result.stderr}"
+            
+            log_nginx_operation("validate", True, "Configuration syntax OK")
+
             # Reload Nginx
             logger.info("Reloading Nginx...")
             success, reload_msg = self.reload_nginx()
@@ -296,7 +315,12 @@ class NginxConfigGenerator:
                 logger.info("Configuration applied successfully")
                 return True, "Configuration applied and Nginx reloaded"
             else:
+                # Reload failed, restore backup
                 logger.error(f"Reload failed: {reload_msg}")
+                if os.path.exists(backup_path):
+                    shutil.copy2(backup_path, self.config_path)
+                    self.reload_nginx()  # Try to reload with old config
+                    logger.info("Restored previous config due to reload failure")
                 return False, f"Reload failed: {reload_msg}"
 
         except Exception as e:
