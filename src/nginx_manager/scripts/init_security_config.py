@@ -40,8 +40,8 @@ def init_security_config():
         ),
         # Default SSL Certificate (main nginx.conf already has default_server)
         "enable_default_ssl_server": "false",
-        "default_ssl_cert_path": "/etc/ssl/certs/default.crt",
-        "default_ssl_key_path": "/etc/ssl/private/default.key",
+        "default_ssl_cert_path": "/etc/nginx/certs/server.crt",
+        "default_ssl_key_path": "/etc/nginx/certs/server.key",
     }
 
     for key, value in configs.items():
