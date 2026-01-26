@@ -1,4 +1,4 @@
-# Nginx Manager - Project Status Report
+# Reverse Proxy MCP - Project Status Report
 
 **Date**: January 24, 2026  
 **Status**: 50% Complete (Phases 1-4.2 Done)  
@@ -7,7 +7,7 @@
 
 ## 🎯 Project Overview
 
-Nginx Manager replaces manual Nginx configuration with a dynamic, database-driven system featuring:
+Reverse Proxy MCP replaces manual Nginx configuration with a dynamic, database-driven system featuring:
 - REST API for complete proxy management (v1 & v2)
 - MCP Server with 21 AI-accessible tools
 - Flutter WebUI for centralized management
@@ -22,9 +22,9 @@ Nginx Manager replaces manual Nginx configuration with a dynamic, database-drive
 - **Deliverable**: SQLite schema, FastAPI scaffold, auth endpoints, CRUD operations
 - **Status**: COMPLETE
 - **Files**: 
-  - `src/nginx_manager/models/database.py` - 7 tables (users, backends, rules, certs, logs, config, metrics)
-  - `src/nginx_manager/api/v1/` - All CRUD endpoints
-  - `src/nginx_manager/core/` - Auth, DB, config, Nginx generation
+  - `src/reverse_proxy_mcp/models/database.py` - 7 tables (users, backends, rules, certs, logs, config, metrics)
+  - `src/reverse_proxy_mcp/api/v1/` - All CRUD endpoints
+  - `src/reverse_proxy_mcp/core/` - Auth, DB, config, Nginx generation
 - **Code Quality**: Black formatted, Ruff linted, mypy compliant
 - **Tests**: 16 unit tests for API endpoints
 
@@ -145,10 +145,8 @@ Full analysis in `DEPENDENCY_LICENSES.md`.
 
 ## 📖 Documentation
 
-- **WARP.md**: Development guide (for phases 1-3)
+- **WARP.md**: Development guide
 - **ARCHITECTURE.md**: Single-container design
-- **EXECUTION_GUIDE.md**: Step-by-step implementation (for phases 4-7)
-- **DEPENDENCY_LICENSES.md**: License compliance
 - **PROJECT_STATUS.md**: This file
 - **README.md**: User documentation
 - **LICENSE**: BSD 3-Clause
@@ -214,10 +212,9 @@ Full analysis in `DEPENDENCY_LICENSES.md`.
 ## 📞 Getting Started
 
 For implementation of remaining phases, see:
-- `EXECUTION_GUIDE.md` - Step-by-step instructions
 - `ARCHITECTURE.md` - Design decisions
 - `tests/conftest.py` - Test fixture patterns
-- `src/nginx_manager/api/v1/` - Endpoint examples
+- `src/reverse_proxy_mcp/api/v1/` - Endpoint examples
 
 ## 🏁 Success Criteria
 

@@ -9,7 +9,7 @@ class AppConfig {
     return apiBaseUrl;
   }
 
-  static const String appName = 'Nginx Manager';
+  static const String appName = 'Reverse Proxy MCP';
   static const String appVersion = '1.0.0';
 
   // API Timeouts

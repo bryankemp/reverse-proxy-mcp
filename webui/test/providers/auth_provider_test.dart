@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:nginx_manager_webui/providers/auth_provider.dart';
-import 'package:nginx_manager_webui/services/api_service.dart';
-import 'package:nginx_manager_webui/services/storage_service.dart';
+import 'package:reverse_proxy_mcp_webui/providers/auth_provider.dart';
+import 'package:reverse_proxy_mcp_webui/services/api_service.dart';
+import 'package:reverse_proxy_mcp_webui/services/storage_service.dart';
 
 import 'auth_provider_test.mocks.dart';
 

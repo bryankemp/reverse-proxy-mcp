@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  nginx-manager:
+  reverse-proxy-mcp:
     build: .
-    image: nginx-manager:latest
-    container_name: nginx-manager
+    image: reverse-proxy-mcp:latest
+    container_name: reverse-proxy-mcp
     ports:
       - "80:80"
       - "443:443"
@@ -15,7 +15,7 @@ services:
       - ./logs:/var/log
     environment:
       - DEBUG=true
-      - DATABASE_URL=sqlite:///./data/nginx_manager.db
+      - DATABASE_URL=sqlite:///./data/reverse_proxy_mcp.db
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}

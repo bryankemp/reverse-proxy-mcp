@@ -2,16 +2,16 @@
 set -e
 
 # Initialize database tables
-python -c 'from nginx_manager.core.database import create_all_tables; create_all_tables()' 2>/dev/null || true
+python -c 'from reverse_proxy_mcp.core.database import create_all_tables; create_all_tables()' 2>/dev/null || true
 
 # Initialize security configuration (if not already done)
-python -m nginx_manager.scripts.init_security_config 2>/dev/null || true
+python -m reverse_proxy_mcp.scripts.init_security_config 2>/dev/null || true
 
 # Generate nginx config if backends and rules exist
 python -c '
-from nginx_manager.core import get_db
-from nginx_manager.models.database import BackendServer, ProxyRule
-from nginx_manager.core.nginx import NginxConfigGenerator
+from reverse_proxy_mcp.core import get_db
+from reverse_proxy_mcp.models.database import BackendServer, ProxyRule
+from reverse_proxy_mcp.core.nginx import NginxConfigGenerator
 import os
 import sys
 

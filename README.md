@@ -1,4 +1,4 @@
-# Nginx Manager
+# Reverse Proxy MCP
 
 A containerized Nginx reverse proxy management system with REST API, Model Context Protocol (MCP) server, and Flutter WebUI. Provides centralized control, monitoring, and configuration for your reverse proxy infrastructure.
 
@@ -53,8 +53,8 @@ A containerized Nginx reverse proxy management system with REST API, Model Conte
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nginx-manager.git
-cd nginx-manager
+git clone https://github.com/yourusername/reverse-proxy-mcp.git
+cd reverse-proxy-mcp
 
 # Create environment configuration
 cp .env.example .env
@@ -82,7 +82,7 @@ uv sync --all-groups
 pre-commit install
 
 # Run the API server
-uv run python -m nginx_manager
+uv run python -m reverse_proxy_mcp
 
 # Run tests
 uv run pytest
@@ -94,8 +94,8 @@ uv run black src && uv run ruff check src && uv run mypy src
 ## Project Structure
 
 ```
-nginx-manager/
-├── src/nginx_manager/
+reverse-proxy-mcp/
+├── src/reverse_proxy_mcp/
 │   ├── api/                    # FastAPI application
 │   │   ├── v1/                 # REST API v1 endpoints
 │   │   ├── v2/                 # REST API v2 endpoints
@@ -139,7 +139,7 @@ Create a `.env` file in the project root:
 
 ```bash
 # Database
-DATABASE_URL=sqlite:///./data/nginx_manager.db
+DATABASE_URL=sqlite:///./data/reverse_proxy_mcp.db
 
 # JWT Configuration
 SECRET_KEY=your-secret-key-change-this
@@ -192,7 +192,7 @@ uv run pytest --cov=src --cov-report=html
 uv run pytest -m unit
 
 # Build Docker image
-docker build -t nginx-manager-api -f Dockerfile.api .
+docker build -t reverse-proxy-mcp-api -f Dockerfile.api .
 
 # Run Docker Compose
 docker-compose up
@@ -253,6 +253,6 @@ Contributions are welcome! Please:
 
 ## Support
 
-- **Documentation**: https://nginx-manager.readthedocs.io
+- **Documentation**: https://reverse-proxy-mcp.readthedocs.io
 - **Issues**: GitHub Issues
 - **Email**: bryan@kempville.com

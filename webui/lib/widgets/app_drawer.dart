@@ -22,7 +22,7 @@ class AppDrawer extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const Text(
-                      'Nginx Manager',
+                      'Reverse Proxy MCP',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,

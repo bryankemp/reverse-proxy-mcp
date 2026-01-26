@@ -1,8 +1,8 @@
-# Nginx Manager - Architecture
+# Reverse Proxy MCP - Architecture
 
 ## Single Container Deployment
 
-**Decision:** Nginx Manager uses a **single unified container** instead of microservices.
+**Decision:** Reverse Proxy MCP uses a **single unified container** instead of microservices.
 
 ### Rationale
 
@@ -16,7 +16,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Nginx Manager Container (Alpine Linux + Python)    │
+│  Reverse Proxy MCP Container (Alpine Linux + Python)│
 │                                                      │
 │  ┌────────────────────────────────────────────────┐ │
 │  │ Supervisord (Process Manager)                  │ │
@@ -29,7 +29,7 @@
 │  └──────────────┘ └───────────┘ └─────────────┘   │
 │                                                      │
 │  ┌─────────────────────────────────────────────┐   │
-│  │ SQLite Database (/data/nginx_manager.db)    │   │
+│  │ SQLite Database (/data/reverse_proxy_mcp.db)│   │
 │  └─────────────────────────────────────────────┘   │
 │                                                      │
 │  ┌─────────────────────────────────────────────┐   │
@@ -50,15 +50,15 @@ docker run -d \
   -p 443:443 \
   -v $(pwd)/data:/app/data \
   -e SECRET_KEY=your-secret-key \
-  nginx-manager:latest
+  reverse-proxy-mcp:latest
 ```
 
 **With Docker Compose** (optional for easier management):
 ```yaml
 version: '3.8'
 services:
-  nginx-manager:
-    image: nginx-manager:latest
+  reverse-proxy-mcp:
+    image: reverse-proxy-mcp:latest
     ports:
       - "80:80"
       - "443:443"
@@ -83,14 +83,14 @@ autorestart=true
 priority=100
 
 [program:api]
-command=uvicorn nginx_manager.api.main:app --host 0.0.0.0 --port 8000
+command=uvicorn reverse_proxy_mcp.api.main:app --host 0.0.0.0 --port 8000
 directory=/app
 autostart=true
 autorestart=true
 priority=200
 
 [program:mcp-server]
-command=python -m nginx_manager.mcp
+command=python -m reverse_proxy_mcp.mcp
 directory=/app
 autostart=true
 autorestart=true

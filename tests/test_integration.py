@@ -2,8 +2,8 @@
 
 import pytest
 
-from nginx_manager.core.security import hash_password
-from nginx_manager.models.database import User
+from reverse_proxy_mcp.core.security import hash_password
+from reverse_proxy_mcp.models.database import AuditLog, User
 
 
 @pytest.mark.integration
@@ -168,7 +168,6 @@ def test_health_endpoint(client):
 @pytest.mark.integration
 def test_audit_logging(client, admin_token, db):
     """Test that admin actions are logged."""
-    from nginx_manager.models.database import AuditLog
 
     # Create backend
     response = client.post(

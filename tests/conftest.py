@@ -10,9 +10,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from nginx_manager.api.main import create_app
-from nginx_manager.core.security import create_access_token, hash_password
-from nginx_manager.models.database import BackendServer, Base, ProxyRule, User
+from reverse_proxy_mcp.api.main import create_app
+from reverse_proxy_mcp.core.security import create_access_token, hash_password
+from reverse_proxy_mcp.models.database import BackendServer, Base, ProxyRule, User
 
 
 @pytest.fixture(scope="session")
@@ -57,7 +57,7 @@ def test_nginx_dir():
 @pytest.fixture
 def mock_nginx_generator(test_nginx_dir, monkeypatch):
     """Mock NginxConfigGenerator to use test directories."""
-    from nginx_manager.core.nginx import NginxConfigGenerator
+    from reverse_proxy_mcp.core.nginx import NginxConfigGenerator
 
     def mock_init(self, config_path=None, backup_dir=None):
         """Mock init that uses test directories."""
@@ -81,7 +81,7 @@ def mock_nginx_generator(test_nginx_dir, monkeypatch):
 @pytest.fixture
 def client(db, mock_nginx_generator):
     """Create FastAPI test client."""
-    from nginx_manager.core.database import get_db
+    from reverse_proxy_mcp.core.database import get_db
 
     app = create_app()
 

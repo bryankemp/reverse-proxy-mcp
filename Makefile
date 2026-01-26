@@ -1,8 +1,8 @@
 .PHONY: help install lint test format clean serve dev setup
 
 help:
-	@echo "Nginx Manager - Development Commands"
-	@echo "===================================="
+	@echo "Reverse Proxy MCP - Development Commands"
+	@echo "=========================================="
 	@echo "make setup         - Create venv and install dependencies"
 	@echo "make install       - Install dependencies"
 	@echo "make lint          - Run linting checks (black, ruff, mypy)"
@@ -45,10 +45,10 @@ test-coverage:
 	@echo "Coverage report generated in htmlcov/index.html"
 
 dev:
-	uv run python -m nginx_manager
+	uv run python -m reverse_proxy_mcp
 
 serve:
-	uv run uvicorn nginx_manager.api.main:create_app --reload --port 8000
+	uv run uvicorn reverse_proxy_mcp.api.main:create_app --reload --port 8000
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
@@ -57,7 +57,7 @@ clean:
 	rm -rf dist build *.egg-info .uv-cache
 
 db-init:
-	uv run python -c "from nginx_manager.core import create_all_tables; create_all_tables()"
+	uv run python -c "from reverse_proxy_mcp.core import create_all_tables; create_all_tables()"
 
 pre-commit-run:
 	pre-commit run --all-files

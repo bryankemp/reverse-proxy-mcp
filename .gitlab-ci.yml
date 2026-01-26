@@ -7,7 +7,7 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   DOCKER_REGISTRY: "registry.gitlab.com"
-  DOCKER_IMAGE: "${DOCKER_REGISTRY}/kempville/nginx-manager"
+  DOCKER_IMAGE: "${DOCKER_REGISTRY}/kempville/reverse-proxy-mcp"
   PYTHON_VERSION: "3.11"
   FF_USE_FASTZIP: "true"
   ARTIFACT_COMPRESSION_LEVEL: "fastest"

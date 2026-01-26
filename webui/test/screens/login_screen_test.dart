@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:nginx_manager_webui/screens/login_screen.dart';
-import 'package:nginx_manager_webui/providers/auth_provider.dart';
-import 'package:nginx_manager_webui/services/api_service.dart';
-import 'package:nginx_manager_webui/services/storage_service.dart';
+import 'package:reverse_proxy_mcp_webui/screens/login_screen.dart';
+import 'package:reverse_proxy_mcp_webui/providers/auth_provider.dart';
+import 'package:reverse_proxy_mcp_webui/services/api_service.dart';
+import 'package:reverse_proxy_mcp_webui/services/storage_service.dart';
 import 'package:provider/provider.dart';
 
 import 'login_screen_test.mocks.dart';
@@ -46,7 +46,7 @@ void main() {
       await tester.pumpWidget(createLoginScreen());
 
       // Verify all UI elements are present
-      expect(find.text('Nginx Manager'), findsWidgets);
+      expect(find.text('Reverse Proxy MCP'), findsWidgets);
       expect(find.text('Reverse Proxy Management'), findsOneWidget);
       expect(find.byIcon(Icons.admin_panel_settings), findsOneWidget);
       expect(find.byType(TextField), findsNWidgets(2));

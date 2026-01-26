@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-Nginx Manager is a containerized Nginx reverse proxy management system that replaces manual configuration with a dynamic, database-driven approach. It provides:
+Reverse Proxy MCP is a containerized Nginx reverse proxy management system that replaces manual configuration with a dynamic, database-driven approach. It provides:
 
 - **REST API** (v1 hierarchical, v2 matrix URIs) for complete proxy management
 - **MCP Server** for AI/LLM integration via Model Context Protocol
@@ -43,7 +43,7 @@ Proxy Layer:
 - Atomic reload with validation and rollback
 
 Data Layer:
-- SQLite database (./data/nginx_manager.db)
+- SQLite database (./data/reverse_proxy_mcp.db)
   - 7 tables: users, backend_servers, proxy_rules, ssl_certificates, audit_logs, proxy_config, metrics
   - ACID transactions, enforced referential integrity
   - 30-day metrics retention (rolling window)
@@ -91,13 +91,13 @@ pre-commit install
 
 ```bash
 # Run API server locally with uv
-uv run python -m nginx_manager
+uv run python -m reverse_proxy_mcp
 
 # Or with uvicorn directly
-uv run uvicorn nginx_manager.api.main:create_app --reload --port 8000
+uv run uvicorn reverse_proxy_mcp.api.main:create_app --reload --port 8000
 
 # Run MCP server (after API is implemented)
-uv run python -m nginx_manager.mcp
+uv run python -m reverse_proxy_mcp.mcp
 
 # Run with docker-compose (after Dockerfiles are complete)
 docker-compose up -d
@@ -144,20 +144,20 @@ uv run pytest tests/test_auth.py::test_login_success
 
 ```bash
 # Initialize database (automatic on app startup)
-python -c "from nginx_manager.core import create_all_tables; create_all_tables()"
+python -c "from reverse_proxy_mcp.core import create_all_tables; create_all_tables()"
 
 # Create initial admin user (implement after user service)
-python -m nginx_manager.scripts.create_admin
+python -m reverse_proxy_mcp.scripts.create_admin
 
 # Database file location
-./data/nginx_manager.db
+./data/reverse_proxy_mcp.db
 ```
 
 ## Project Structure
 
 ```
-nginx-manager/
-├── src/nginx_manager/
+reverse-proxy-mcp/
+├── src/reverse_proxy_mcp/
 │   ├── __init__.py
 │   ├── __main__.py               # Entry point
 │   ├── api/
@@ -321,8 +321,8 @@ except Exception as e:
 ### Repository Setup
 ```bash
 # Clone from GitLab
-git clone https://gitlab.kempville.com/yourusername/nginx-manager.git
-cd nginx-manager
+git clone https://gitlab.kempville.com/yourusername/reverse-proxy-mcp.git
+cd reverse-proxy-mcp
 
 # Create develop branch
 git checkout -b develop
@@ -513,7 +513,7 @@ def admin_token(admin_user):
 
 ## Related Documentation
 
-- [Nginx Manager README](./README.md) - User-facing documentation
+- [Reverse Proxy MCP README](./README.md) - User-facing documentation
 - [API Reference](./docs/api-reference.rst) - Endpoint documentation (TBD)
 - [Architecture](./docs/architecture.rst) - Technical architecture (TBD)
 - [Digital Loggers Power Switch Pro](https://www.digital-loggers.com/) - Original reverse proxy target

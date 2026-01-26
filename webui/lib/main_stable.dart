@@ -122,7 +122,7 @@ class AdminDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nginx Manager'),
+        title: const Text('Reverse Proxy MCP'),
         elevation: 0,
         actions: [
           Padding(
@@ -146,7 +146,7 @@ class AdminDashboard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Nginx Manager Admin',
+                'Reverse Proxy MCP Admin',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 32),

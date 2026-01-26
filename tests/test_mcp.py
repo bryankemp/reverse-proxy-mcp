@@ -8,9 +8,9 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from nginx_manager.mcp.client import MCPAPIClient, get_client, set_client_token
-from nginx_manager.mcp.handlers import TOOL_HANDLERS, ToolHandlers
-from nginx_manager.mcp.tools import TOOLS
+from reverse_proxy_mcp.mcp.client import MCPAPIClient, get_client, set_client_token
+from reverse_proxy_mcp.mcp.handlers import TOOL_HANDLERS, ToolHandlers
+from reverse_proxy_mcp.mcp.tools import TOOLS
 
 
 class TestMCPAPIClient:
@@ -34,7 +34,7 @@ class TestMCPAPIClient:
         client.set_token("new-token")
         assert client.token == "new-token"
 
-    @patch("nginx_manager.mcp.client.requests.Session.get")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.get")
     def test_get_request_success(self, mock_get):
         """Test successful GET request."""
         mock_response = Mock()
@@ -48,7 +48,7 @@ class TestMCPAPIClient:
         assert result == {"backends": []}
         mock_get.assert_called_once()
 
-    @patch("nginx_manager.mcp.client.requests.Session.get")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.get")
     def test_get_request_with_params(self, mock_get):
         """Test GET request with query parameters."""
         mock_response = Mock()
@@ -63,7 +63,7 @@ class TestMCPAPIClient:
         call_args = mock_get.call_args
         assert call_args[1]["params"] == {"limit": 10, "offset": 0}
 
-    @patch("nginx_manager.mcp.client.requests.Session.post")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.post")
     def test_post_request_success(self, mock_post):
         """Test successful POST request."""
         mock_response = Mock()
@@ -79,7 +79,7 @@ class TestMCPAPIClient:
         assert result["id"] == 1
         assert result["name"] == "backend-1"
 
-    @patch("nginx_manager.mcp.client.requests.Session.put")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.put")
     def test_put_request_success(self, mock_put):
         """Test successful PUT request."""
         mock_response = Mock()
@@ -92,7 +92,7 @@ class TestMCPAPIClient:
 
         assert result["name"] == "updated"
 
-    @patch("nginx_manager.mcp.client.requests.Session.delete")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.delete")
     def test_delete_request_success(self, mock_delete):
         """Test successful DELETE request."""
         mock_response = Mock()
@@ -104,7 +104,7 @@ class TestMCPAPIClient:
 
         assert result == {"status": "success"}
 
-    @patch("nginx_manager.mcp.client.requests.Session.get")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.get")
     def test_get_request_error(self, mock_get):
         """Test GET request with HTTP error."""
         mock_response = Mock()
@@ -117,7 +117,7 @@ class TestMCPAPIClient:
         with pytest.raises(ValueError):
             client.get("/backends/999")
 
-    @patch("nginx_manager.mcp.client.requests.Session.get")
+    @patch("reverse_proxy_mcp.mcp.client.requests.Session.get")
     def test_get_request_connection_error(self, mock_get):
         """Test GET request with connection error."""
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
@@ -146,7 +146,7 @@ class TestGlobalClient:
 class TestToolHandlers:
     """Tests for tool handler execution."""
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_list_backends_handler(self, mock_get_client):
         """Test list_backends handler."""
         mock_client = Mock()
@@ -158,7 +158,7 @@ class TestToolHandlers:
         assert result["status"] == "success"
         assert isinstance(result["data"], list)
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_create_backend_handler(self, mock_get_client):
         """Test create_backend handler."""
         mock_client = Mock()
@@ -170,7 +170,7 @@ class TestToolHandlers:
         assert result["status"] == "success"
         mock_client.post.assert_called_once()
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_update_backend_handler(self, mock_get_client):
         """Test update_backend handler."""
         mock_client = Mock()
@@ -181,7 +181,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_delete_backend_handler(self, mock_get_client):
         """Test delete_backend handler."""
         mock_client = Mock()
@@ -193,7 +193,7 @@ class TestToolHandlers:
         assert result["status"] == "success"
         assert "deleted" in result["message"].lower()
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_get_backend_handler(self, mock_get_client):
         """Test get_backend handler."""
         mock_client = Mock()
@@ -204,7 +204,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_list_proxy_rules_handler(self, mock_get_client):
         """Test list_proxy_rules handler."""
         mock_client = Mock()
@@ -215,7 +215,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_create_proxy_rule_handler(self, mock_get_client):
         """Test create_proxy_rule handler."""
         mock_client = Mock()
@@ -226,7 +226,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_reload_nginx_handler(self, mock_get_client):
         """Test reload_nginx handler."""
         mock_client = Mock()
@@ -238,7 +238,7 @@ class TestToolHandlers:
         assert result["status"] == "success"
         assert "reload" in result["message"].lower()
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_list_certificates_handler(self, mock_get_client):
         """Test list_certificates handler."""
         mock_client = Mock()
@@ -249,7 +249,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_create_certificate_handler(self, mock_get_client):
         """Test create_certificate handler."""
         mock_client = Mock()
@@ -264,7 +264,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_delete_certificate_handler(self, mock_get_client):
         """Test delete_certificate handler."""
         mock_client = Mock()
@@ -275,7 +275,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_get_certificate_handler(self, mock_get_client):
         """Test get_certificate handler."""
         mock_client = Mock()
@@ -286,7 +286,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_list_users_handler(self, mock_get_client):
         """Test list_users handler."""
         mock_client = Mock()
@@ -297,7 +297,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_create_user_handler(self, mock_get_client):
         """Test create_user handler."""
         mock_client = Mock()
@@ -308,7 +308,7 @@ class TestToolHandlers:
         )
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_get_config_handler(self, mock_get_client):
         """Test get_config handler."""
         mock_client = Mock()
@@ -319,7 +319,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_update_config_handler(self, mock_get_client):
         """Test update_config handler."""
         mock_client = Mock()
@@ -330,7 +330,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_get_health_handler(self, mock_get_client):
         """Test get_health handler."""
         mock_client = Mock()
@@ -341,7 +341,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_get_metrics_handler(self, mock_get_client):
         """Test get_metrics handler."""
         mock_client = Mock()
@@ -352,7 +352,7 @@ class TestToolHandlers:
 
         assert result["status"] == "success"
 
-    @patch("nginx_manager.mcp.handlers.get_client")
+    @patch("reverse_proxy_mcp.mcp.handlers.get_client")
     def test_handler_error_handling(self, mock_get_client):
         """Test handler error handling."""
         mock_client = Mock()

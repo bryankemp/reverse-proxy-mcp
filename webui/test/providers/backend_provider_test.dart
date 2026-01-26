@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-import 'package:nginx_manager_webui/providers/backend_provider.dart';
-import 'package:nginx_manager_webui/services/api_service.dart';
-import 'package:nginx_manager_webui/models/models.dart';
+import 'package:reverse_proxy_mcp_webui/providers/backend_provider.dart';
+import 'package:reverse_proxy_mcp_webui/services/api_service.dart';
+import 'package:reverse_proxy_mcp_webui/models/models.dart';
 
 import 'backend_provider_test.mocks.dart';
 

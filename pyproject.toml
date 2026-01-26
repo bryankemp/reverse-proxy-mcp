@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "nginx-manager"
+name = "reverse-proxy-mcp"
 version = "0.1.0"
-description = "Containerized Nginx reverse proxy management system with REST API, MCP server, and Flutter WebUI"
+description = "Containerized reverse proxy management system with REST API, MCP server, and Flutter WebUI"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "BSD-3-Clause"}
 authors = [{name = "Bryan Kemp", email = "bryan@kempville.com"}]
-keywords = ["nginx", "reverse-proxy", "api", "mcp", "containerized"]
+keywords = ["reverse-proxy", "nginx", "api", "mcp", "containerized", "proxy-management"]
 
 dependencies = [
     "fastapi>=0.115.0",

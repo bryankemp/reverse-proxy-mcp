@@ -3,7 +3,7 @@
 import pytest
 from fastapi import status
 
-from nginx_manager.models.database import User
+from reverse_proxy_mcp.models.database import User
 
 
 @pytest.mark.unit
@@ -40,8 +40,8 @@ class TestAuthentication:
 
     def test_login_inactive_user(self, client, db):
         """Test login with inactive user."""
-        from nginx_manager.core.security import hash_password
-        from nginx_manager.models.database import User
+        from reverse_proxy_mcp.core.security import hash_password
+        from reverse_proxy_mcp.models.database import User
 
         user = User(
             username="inactive",

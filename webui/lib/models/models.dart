@@ -1,4 +1,4 @@
-/// Dart models for Nginx Manager API responses
+/// Dart models for Reverse Proxy MCP API responses
 
 /// User model
 class User {

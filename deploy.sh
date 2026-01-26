@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# Nginx Manager Deployment Script
+# Reverse Proxy MCP Deployment Script
 # Deploys to slug.kempville.com via SSH
 
 set -e
 
 REMOTE_HOST="grimlock.kempville.com"
 REMOTE_USER="bryan"
-REMOTE_DIR="~/nginx-manager"
+REMOTE_DIR="~/reverse-proxy-mcp"
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
 
-echo "🚀 Deploying Nginx Manager to $REMOTE_HOST..."
+echo "🚀 Deploying Reverse Proxy MCP to $REMOTE_HOST..."
 
 # 0. Build Flutter web (release)
 if command -v flutter >/dev/null 2>&1; then
@@ -45,7 +45,7 @@ echo "⚙️  Configuring environment..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "cat > $REMOTE_DIR/.env << 'ENVEOF'
 DEBUG=false
 LOG_LEVEL=INFO
-DATABASE_URL=sqlite:///./data/nginx_manager.db
+DATABASE_URL=sqlite:///./data/reverse_proxy_mcp.db
 SECRET_KEY=$(openssl rand -hex 32)
 ADMIN_EMAIL=admin@grimlock.kempville.com
 ADMIN_PASSWORD=$(openssl rand -base64 12)
@@ -61,11 +61,11 @@ ENVEOF
 
 # 4. Build image on remote (using podman if docker not available)
 echo "🏗️  Building container image..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker build -t nginx-manager:latest ."
+ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker build -t reverse-proxy-mcp:latest ."
 
 # 5. Stop existing container if running
 echo "⏹️  Stopping existing container..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "docker stop nginx-manager 2>/dev/null || true && docker rm nginx-manager 2>/dev/null || true"
+ssh "$REMOTE_USER@$REMOTE_HOST" "docker stop reverse-proxy-mcp 2>/dev/null || true && docker rm reverse-proxy-mcp 2>/dev/null || true"
 
 # 6. Ensure certs exist
 echo "🔐 Ensuring SSL certs..."
@@ -74,7 +74,7 @@ ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR/certs && cd $REMOTE_DIR/ce
 # 7. Start new container
 echo "🎬 Starting new container..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker run -d \
-  --name nginx-manager \
+  --name reverse-proxy-mcp \
   --restart unless-stopped \
   -p 80:80 \
   -p 443:443 \
@@ -83,7 +83,7 @@ ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && docker run -d \
   -v \$(pwd)/certs:/etc/nginx/certs \
   -v \$(pwd)/logs:/var/log \
   --env-file .env \
-  nginx-manager:latest"
+  reverse-proxy-mcp:latest"
 
 # 7. Verify deployment
 echo "✅ Verifying deployment..."
@@ -104,6 +104,6 @@ echo "  HTTP Proxy: http://$REMOTE_HOST:80 (reverse proxy)"
 echo "  HTTPS Proxy: https://$REMOTE_HOST:443 (reverse proxy with HTTPS)"
 echo "  API Docs: http://$REMOTE_HOST:5100/docs (available via admin UI)"
 echo ""
-echo "To view logs: ssh $REMOTE_USER@$REMOTE_HOST 'docker logs -f nginx-manager'"
-echo "To stop: ssh $REMOTE_USER@$REMOTE_HOST 'docker stop nginx-manager'"
-echo "To restart: ssh $REMOTE_USER@$REMOTE_HOST 'docker restart nginx-manager'"
+echo "To view logs: ssh $REMOTE_USER@$REMOTE_HOST 'docker logs -f reverse-proxy-mcp'"
+echo "To stop: ssh $REMOTE_USER@$REMOTE_HOST 'docker stop reverse-proxy-mcp'"
+echo "To restart: ssh $REMOTE_USER@$REMOTE_HOST 'docker restart reverse-proxy-mcp'"

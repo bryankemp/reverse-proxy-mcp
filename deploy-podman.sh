@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Nginx Manager Deployment Script (Podman)
+# Reverse Proxy MCP Deployment Script (Podman)
 # Deploys to turbo.kempville.com via SSH using Podman
 
 set -e
 
 REMOTE_HOST="turbo.kempville.com"
 REMOTE_USER="bryan"
-REMOTE_DIR="~/nginx-manager"
+REMOTE_DIR="~/reverse-proxy-mcp"
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "🚀 Deploying Nginx Manager to $REMOTE_HOST..."
+echo "🚀 Deploying Reverse Proxy MCP to $REMOTE_HOST..."
 
 # 1. Create remote directory
 echo "📁 Creating remote directory..."
@@ -37,7 +37,7 @@ echo "⚙️  Configuring environment..."
 ssh "$REMOTE_USER@$REMOTE_HOST" "cat > $REMOTE_DIR/.env << 'ENVEOF'
 DEBUG=false
 LOG_LEVEL=INFO
-DATABASE_URL=sqlite:///./data/nginx_manager.db
+DATABASE_URL=sqlite:///./data/reverse_proxy_mcp.db
 SECRET_KEY=$(openssl rand -hex 32)
 ADMIN_EMAIL=admin@turbo.kempville.com
 ADMIN_PASSWORD=$(openssl rand -base64 12)
@@ -53,7 +53,7 @@ ENVEOF
 
 # 4. Build image on remote with podman
 echo "🏗️  Building container image with podman..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && podman build --no-cache -t nginx-manager:latest ."
+ssh "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_DIR && podman build --no-cache -t reverse-proxy-mcp:latest ."
 
 # 5. Create required directories
 echo "📂 Creating required directories..."
@@ -61,13 +61,13 @@ ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR/data $REMOTE_DIR/certs $RE
 
 # 6. Stop existing container if running
 echo "⏹️  Stopping existing container..."
-ssh "$REMOTE_USER@$REMOTE_HOST" "podman stop nginx-manager 2>/dev/null || true && podman rm nginx-manager 2>/dev/null || true"
+ssh "$REMOTE_USER@$REMOTE_HOST" "podman stop reverse-proxy-mcp 2>/dev/null || true && podman rm reverse-proxy-mcp 2>/dev/null || true"
 
 # 7. Start new container with podman (using higher ports due to privilege restrictions)
 echo "🎬 Starting new container..."
 echo "  Using ports: 8080->80, 8443->443, 5100->3000"
-ssh "$REMOTE_USER@$REMOTE_HOST" 'cd $HOME/nginx-manager && podman run -d \
-  --name nginx-manager \
+ssh "$REMOTE_USER@$REMOTE_HOST" 'cd $HOME/reverse-proxy-mcp && podman run -d \
+  --name reverse-proxy-mcp \
   --restart=always \
   -p 8080:80 \
   -p 8443:443 \
@@ -76,7 +76,7 @@ ssh "$REMOTE_USER@$REMOTE_HOST" 'cd $HOME/nginx-manager && podman run -d \
   -v '\''$(pwd)'/certs:/etc/nginx/certs:Z \
   -v '\''$(pwd)'/logs:/var/log:Z \\
   --env-file .env \
-  nginx-manager:latest"
+  reverse-proxy-mcp:latest"
 
 # 8. Verify deployment
 echo "✅ Verifying deployment..."
@@ -85,7 +85,7 @@ if ssh "$REMOTE_USER@$REMOTE_HOST" "curl -f http://localhost:5100 >/dev/null 2>&
   echo "✨ Deployment successful!"
 else
   echo "⚠️  Service may still be starting. Checking logs..."
-  ssh "$REMOTE_USER@$REMOTE_HOST" "podman logs nginx-manager | tail -20" || true
+  ssh "$REMOTE_USER@$REMOTE_HOST" "podman logs reverse-proxy-mcp | tail -20" || true
 fi
 
 echo ""
@@ -97,6 +97,6 @@ echo "  HTTP Proxy: http://$REMOTE_HOST:80 (reverse proxy)"
 echo "  HTTPS Proxy: https://$REMOTE_HOST:443 (reverse proxy with HTTPS)"
 echo "  API Docs: http://$REMOTE_HOST:5100/docs (available via admin UI)"
 echo ""
-echo "To view logs: ssh $REMOTE_USER@$REMOTE_HOST 'podman logs -f nginx-manager'"
-echo "To stop: ssh $REMOTE_USER@$REMOTE_HOST 'podman stop nginx-manager'"
-echo "To restart: ssh $REMOTE_USER@$REMOTE_HOST 'podman restart nginx-manager'"
+echo "To view logs: ssh $REMOTE_USER@$REMOTE_HOST 'podman logs -f reverse-proxy-mcp'"
+echo "To stop: ssh $REMOTE_USER@$REMOTE_HOST 'podman stop reverse-proxy-mcp'"
+echo "To restart: ssh $REMOTE_USER@$REMOTE_HOST 'podman restart reverse-proxy-mcp'"

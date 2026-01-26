@@ -1,5 +1,5 @@
-name: nginx_manager_webui
-description: "Web UI for Nginx Manager - Reverse proxy management system."
+name: reverse_proxy_mcp_webui
+description: "Web UI for Reverse Proxy MCP - Reverse proxy management system."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

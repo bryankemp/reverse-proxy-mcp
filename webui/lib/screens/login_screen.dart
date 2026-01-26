@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nginx Manager')),
+      appBar: AppBar(title: const Text('Reverse Proxy MCP')),
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
           return Center(
@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Icon(Icons.admin_panel_settings, size: 64, color: Colors.blue),
                     const SizedBox(height: 24),
                     const Text(
-                      'Nginx Manager',
+                      'Reverse Proxy MCP',
                       style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),

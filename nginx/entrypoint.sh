@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-echo "Starting Nginx Manager initialization..."
+echo "Starting Reverse Proxy MCP initialization..."
 
 # Create required directories
 mkdir -p /app/data /etc/nginx/certs /var/log/nginx /var/cache/nginx
 
 # Initialize database if needed
-if [ ! -f /app/data/nginx_manager.db ]; then
+if [ ! -f /app/data/reverse_proxy_mcp.db ]; then
     echo "Initializing database..."
     cd /app
-    /app/.venv/bin/python -c "from nginx_manager.core.database import create_all_tables; create_all_tables()"
+    /app/.venv/bin/python -c "from reverse_proxy_mcp.core.database import create_all_tables; create_all_tables()"
     echo "Database initialized"
 fi
 
@@ -18,10 +18,10 @@ fi
 if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
     echo "Checking admin user..."
     cd /app
-    /app/.venv/bin/python -c "
-from nginx_manager.core.database import SessionLocal
-from nginx_manager.models.database import User
-from nginx_manager.core.security import hash_password
+/app/.venv/bin/python -c "
+from reverse_proxy_mcp.core.database import SessionLocal
+from reverse_proxy_mcp.models.database import User
+from reverse_proxy_mcp.core.security import hash_password
 
 db = SessionLocal()
 admin = db.query(User).filter(User.email == '$ADMIN_EMAIL').first()
