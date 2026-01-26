@@ -382,6 +382,27 @@ class ActionButton {
 class BackendListDialog extends StatelessWidget {
   const BackendListDialog();
 
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showEditBackendForm(BuildContext context, backend) async {
     final nameCtl = TextEditingController(text: backend.name);
     final hostCtl = TextEditingController(text: backend.host);
@@ -544,12 +565,13 @@ class BackendListDialog extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
             return ListView.builder(
+              padding: const EdgeInsets.all(16),
               itemCount: provider.backends.length,
               itemBuilder: (context, index) {
                 final backend = provider.backends[index];
                 return Card(
                   color: backend.isActive ? null : Colors.grey[200],
-                  child: ListTile(
+                  child: ExpansionTile(
                     leading: Icon(
                       Icons.storage,
                       color: backend.isActive ? Colors.blue : Colors.grey,
@@ -572,14 +594,12 @@ class BackendListDialog extends StatelessWidget {
                         PopupMenuItem(
                           child: const Text('Edit'),
                           onTap: () {
-                            // Show edit dialog
                             Future.delayed(Duration.zero, () => _showEditBackendForm(context, backend));
                           },
                         ),
                         PopupMenuItem(
                           child: Text(backend.isActive ? 'Deactivate' : 'Activate'),
                           onTap: () {
-                            // Use Future.delayed to allow popup to close first
                             Future.delayed(Duration.zero, () async {
                               final ok = await provider.updateBackend(
                                 id: backend.id,
@@ -630,6 +650,25 @@ class BackendListDialog extends StatelessWidget {
                         ),
                       ],
                     ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRow('Name', backend.name),
+                            _buildDetailRow('Host/IP', backend.host),
+                            _buildDetailRow('Port', backend.port.toString()),
+                            _buildDetailRow('Protocol', backend.protocol),
+                            _buildDetailRow('Full URL', '${backend.protocol}://${backend.host}:${backend.port}'),
+                            _buildDetailRow('Status', backend.isActive ? 'Active' : 'Inactive'),
+                            _buildDetailRow('Created By', 'User ID: ${backend.createdBy}'),
+                            _buildDetailRow('Created At', backend.createdAt.toString()),
+                            _buildDetailRow('Updated At', backend.updatedAt.toString()),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
