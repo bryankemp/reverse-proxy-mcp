@@ -123,6 +123,10 @@ Future<void> _showNginxConfig(BuildContext context) async {
     
     if (!context.mounted) return;
     
+    final displayConfig = config.isEmpty || config.trim().isEmpty
+        ? '# No proxy rules configured yet\n# Create a backend and proxy rule to see the generated configuration'
+        : config;
+    
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -149,7 +153,7 @@ Future<void> _showNginxConfig(BuildContext context) async {
               Expanded(
                 child: SingleChildScrollView(
                   child: SelectableText(
-                    config,
+                    displayConfig,
                     style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                   ),
                 ),
