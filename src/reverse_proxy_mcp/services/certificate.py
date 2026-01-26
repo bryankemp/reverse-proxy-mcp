@@ -92,8 +92,9 @@ class CertificateService:
 
         # Use sanitized cert_name for file naming
         safe_name = cert_name.replace(" ", "_").replace("/", "_")
-        cert_path = os.path.join(settings.certs_path, f"{safe_name}.crt")
-        key_path = os.path.join(settings.certs_path, f"{safe_name}.key")
+        # Use absolute paths for Nginx compatibility
+        cert_path = os.path.abspath(os.path.join(settings.certs_path, f"{safe_name}.crt"))
+        key_path = os.path.abspath(os.path.join(settings.certs_path, f"{safe_name}.key"))
 
         with open(cert_path, "w") as f:
             f.write(cert_content)
