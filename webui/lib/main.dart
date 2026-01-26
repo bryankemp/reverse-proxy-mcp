@@ -664,8 +664,13 @@ class RuleListDialog extends StatelessWidget {
   Future<void> _showEditRuleForm(BuildContext context, rule) async {
     final domainCtl = TextEditingController(text: rule.domain);
     final pathCtl = TextEditingController(text: rule.pathPattern);
+    final rateLimitCtl = TextEditingController(text: rule.rateLimit ?? '');
+    final ipWhitelistCtl = TextEditingController(text: rule.ipWhitelist ?? '');
     String ruleType = rule.ruleType;
     int? selectedBackendId = rule.backendId;
+    bool enableHsts = rule.enableHsts ?? false;
+    bool forceHttps = rule.forceHttps ?? true;
+    bool sslEnabled = rule.sslEnabled ?? true;
 
     // Get available backends
     final backendProvider = context.read<BackendProvider>();
@@ -678,34 +683,75 @@ class RuleListDialog extends StatelessWidget {
         content: StatefulBuilder(
           builder: (ctx, setState) => SizedBox(
             width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<int>(
-                  value: selectedBackendId,
-                  items: backends.map((backend) {
-                    return DropdownMenuItem<int>(
-                      value: backend.id,
-                      child: Text('${backend.name} (${backend.protocol}://${backend.host}:${backend.port})'),
-                    );
-                  }).toList(),
-                  onChanged: (v) => setState(() => selectedBackendId = v),
-                  decoration: const InputDecoration(labelText: 'Backend Server'),
-                ),
-                const SizedBox(height: 8),
-                TextField(controller: pathCtl, decoration: const InputDecoration(labelText: 'Path Pattern')),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: ruleType,
-                  items: const [
-                    DropdownMenuItem(value: 'reverse_proxy', child: Text('reverse_proxy')),
-                  ],
-                  onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
-                  decoration: const InputDecoration(labelText: 'Rule Type'),
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: selectedBackendId,
+                    items: backends.map((backend) {
+                      return DropdownMenuItem<int>(
+                        value: backend.id,
+                        child: Text('${backend.name} (${backend.protocol}://${backend.host}:${backend.port})'),
+                      );
+                    }).toList(),
+                    onChanged: (v) => setState(() => selectedBackendId = v),
+                    decoration: const InputDecoration(labelText: 'Backend Server'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(controller: pathCtl, decoration: const InputDecoration(labelText: 'Path Pattern')),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: ruleType,
+                    items: const [
+                      DropdownMenuItem(value: 'reverse_proxy', child: Text('reverse_proxy')),
+                    ],
+                    onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
+                    decoration: const InputDecoration(labelText: 'Rule Type'),
+                  ),
+                  const Divider(height: 24),
+                  const Text('Security Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+                  CheckboxListTile(
+                    title: const Text('Enable SSL/HTTPS'),
+                    value: sslEnabled,
+                    onChanged: (v) => setState(() => sslEnabled = v ?? true),
+                    dense: true,
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Force HTTPS Redirect'),
+                    value: forceHttps,
+                    enabled: sslEnabled,
+                    onChanged: (v) => setState(() => forceHttps = v ?? true),
+                    dense: true,
+                  ),
+                  CheckboxListTile(
+                    title: const Text('Enable HSTS'),
+                    value: enableHsts,
+                    enabled: sslEnabled,
+                    onChanged: (v) => setState(() => enableHsts = v ?? false),
+                    dense: true,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: rateLimitCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Rate Limit (optional)',
+                      hintText: 'e.g. 100r/s',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: ipWhitelistCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'IP Whitelist (optional)',
+                      hintText: 'JSON array, e.g. ["192.168.1.0/24"]',
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -723,6 +769,10 @@ class RuleListDialog extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain and Backend are required')));
         return;
       }
+      
+      final rateLimitText = rateLimitCtl.text.trim();
+      final ipWhitelistText = ipWhitelistCtl.text.trim();
+      
       final provider = context.read<RuleProvider>();
       final ok = await provider.updateRule(
         id: rule.id,
@@ -730,6 +780,11 @@ class RuleListDialog extends StatelessWidget {
         backendId: selectedBackendId!,
         pathPattern: path,
         ruleType: ruleType,
+        enableHsts: enableHsts,
+        forceHttps: forceHttps,
+        sslEnabled: sslEnabled,
+        rateLimit: rateLimitText.isEmpty ? null : rateLimitText,
+        ipWhitelist: ipWhitelistText.isEmpty ? null : ipWhitelistText,
       );
       if (!context.mounted) return;
       if (ok) {
@@ -743,8 +798,13 @@ class RuleListDialog extends StatelessWidget {
   Future<void> _showCreateRuleForm(BuildContext context) async {
     final domainCtl = TextEditingController();
     final pathCtl = TextEditingController(text: '/');
+    final rateLimitCtl = TextEditingController();
+    final ipWhitelistCtl = TextEditingController();
     String ruleType = 'reverse_proxy';
     int? selectedBackendId;
+    bool enableHsts = false;
+    bool forceHttps = true;
+    bool sslEnabled = true;
 
     // Get available backends
     final backendProvider = context.read<BackendProvider>();
@@ -793,6 +853,45 @@ class RuleListDialog extends StatelessWidget {
                   onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
                   decoration: const InputDecoration(labelText: 'Rule Type'),
                 ),
+                const Divider(height: 24),
+                const Text('Security Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+                CheckboxListTile(
+                  title: const Text('Enable SSL/HTTPS'),
+                  value: sslEnabled,
+                  onChanged: (v) => setState(() => sslEnabled = v ?? true),
+                  dense: true,
+                ),
+                CheckboxListTile(
+                  title: const Text('Force HTTPS Redirect'),
+                  value: forceHttps,
+                  enabled: sslEnabled,
+                  onChanged: (v) => setState(() => forceHttps = v ?? true),
+                  dense: true,
+                ),
+                CheckboxListTile(
+                  title: const Text('Enable HSTS'),
+                  value: enableHsts,
+                  enabled: sslEnabled,
+                  onChanged: (v) => setState(() => enableHsts = v ?? false),
+                  dense: true,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: rateLimitCtl,
+                  decoration: const InputDecoration(
+                    labelText: 'Rate Limit (optional)',
+                    hintText: 'e.g. 100r/s',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: ipWhitelistCtl,
+                  decoration: const InputDecoration(
+                    labelText: 'IP Whitelist (optional)',
+                    hintText: 'JSON array, e.g. ["192.168.1.0/24"]',
+                  ),
+                  maxLines: 2,
+                ),
               ],
             ),
           ),
@@ -811,7 +910,22 @@ class RuleListDialog extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain and Backend are required')));
         return;
       }
-      final ok = await context.read<RuleProvider>().createRule(domain: domain, backendId: selectedBackendId!, pathPattern: path, ruleType: ruleType);
+      
+      // Parse optional security fields
+      final rateLimitText = rateLimitCtl.text.trim();
+      final ipWhitelistText = ipWhitelistCtl.text.trim();
+      
+      final ok = await context.read<RuleProvider>().createRule(
+        domain: domain,
+        backendId: selectedBackendId!,
+        pathPattern: path,
+        ruleType: ruleType,
+        enableHsts: enableHsts,
+        forceHttps: forceHttps,
+        sslEnabled: sslEnabled,
+        rateLimit: rateLimitText.isEmpty ? null : rateLimitText,
+        ipWhitelist: ipWhitelistText.isEmpty ? null : ipWhitelistText,
+      );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Rule created' : 'Create failed')));
     }

@@ -40,6 +40,11 @@ class RuleProvider extends ChangeNotifier {
     required int backendId,
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
+    bool enableHsts = false,
+    bool forceHttps = true,
+    bool sslEnabled = true,
+    String? rateLimit,
+    String? ipWhitelist,
   }) async {
     try {
       _isLoading = true;
@@ -51,6 +56,11 @@ class RuleProvider extends ChangeNotifier {
         backendId: backendId,
         pathPattern: pathPattern,
         ruleType: ruleType,
+        enableHsts: enableHsts,
+        forceHttps: forceHttps,
+        sslEnabled: sslEnabled,
+        rateLimit: rateLimit,
+        ipWhitelist: ipWhitelist,
       );
       _rules.add(rule);
       notifyListeners();
@@ -71,6 +81,11 @@ class RuleProvider extends ChangeNotifier {
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
     bool? isActive,
+    bool? enableHsts,
+    bool? forceHttps,
+    bool? sslEnabled,
+    String? rateLimit,
+    String? ipWhitelist,
   }) async {
     try {
       _isLoading = true;
@@ -86,6 +101,11 @@ class RuleProvider extends ChangeNotifier {
         createdBy: existing.createdBy,
         createdAt: existing.createdAt,
         updatedAt: DateTime.now(),
+        enableHsts: enableHsts ?? existing.enableHsts,
+        forceHttps: forceHttps ?? existing.forceHttps,
+        sslEnabled: sslEnabled ?? existing.sslEnabled,
+        rateLimit: rateLimit ?? existing.rateLimit,
+        ipWhitelist: ipWhitelist ?? existing.ipWhitelist,
       );
       final updated = await _apiService.updateProxyRule(id, rule);
       final index = _rules.indexWhere((r) => r.id == id);

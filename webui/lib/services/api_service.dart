@@ -264,19 +264,32 @@ class ApiService {
     required int backendId,
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
+    bool enableHsts = false,
+    bool forceHttps = true,
+    bool sslEnabled = true,
+    String? rateLimit,
+    String? ipWhitelist,
   }) async {
     try {
-      final response = await _dio.post(
-        '/proxy-rules',
-        data: {
-          // Backend expects 'frontend_domain'
-          'frontend_domain': domain,
-          'backend_id': backendId,
-          // Optional fields likely not supported yet
-          // 'path_pattern': pathPattern,
-          // 'rule_type': ruleType,
-        },
-      );
+      final data = {
+        'frontend_domain': domain,
+        'backend_id': backendId,
+        'path_pattern': pathPattern,
+        'rule_type': ruleType,
+        'enable_hsts': enableHsts,
+        'force_https': forceHttps,
+        'ssl_enabled': sslEnabled,
+      };
+      
+      // Add optional fields only if provided
+      if (rateLimit != null && rateLimit.isNotEmpty) {
+        data['rate_limit'] = rateLimit;
+      }
+      if (ipWhitelist != null && ipWhitelist.isNotEmpty) {
+        data['ip_whitelist'] = ipWhitelist;
+      }
+      
+      final response = await _dio.post('/proxy-rules', data: data);
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ApiException(
