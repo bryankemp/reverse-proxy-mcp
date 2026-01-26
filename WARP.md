@@ -107,7 +107,7 @@ docker-compose up -d
 
 ```bash
 # Format code with Black (line length: 100)
-uv run black src tests
+uv run python -m black src tests
 
 # Lint with Ruff
 uv run ruff check src tests
@@ -116,7 +116,7 @@ uv run ruff check src tests
 uv run mypy src
 
 # Run all checks together (pre-commit sequence)
-uv run black src tests && uv run ruff check src tests && uv run mypy src
+uv run python -m black src tests && uv run ruff check src tests && uv run mypy src
 ```
 
 ### Testing
