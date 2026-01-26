@@ -39,18 +39,18 @@ dependencies:
   provider: ^6.0.0
 
   # Storage and preferences
-  flutter_secure_storage: ^9.0.0
+  flutter_secure_storage: ^10.0.0
   shared_preferences: ^2.2.0
 
   # Internationalization
-  intl: ^0.19.0
+  intl: ^0.20.0
 
   # Charts and data visualization
-  fl_chart: ^0.64.0
+  fl_chart: ^1.1.1
 
   # UI and styling
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.1.0
+  google_fonts: ^8.0.0
 
   # Utilities
   logger: ^2.1.0

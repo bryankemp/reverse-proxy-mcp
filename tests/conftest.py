@@ -1,5 +1,9 @@
 """Pytest configuration and shared fixtures."""
 
+import os
+import tempfile
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -38,7 +42,44 @@ def db(db_engine):
 
 
 @pytest.fixture
-def client(db):
+def test_nginx_dir():
+    """Create temporary directory for Nginx config during tests."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nginx_dir = Path(tmpdir) / "nginx"
+        nginx_dir.mkdir()
+        backup_dir = nginx_dir / "backup"
+        backup_dir.mkdir()
+        config_path = nginx_dir / "nginx.conf"
+        config_path.touch()
+        yield {"config_path": str(config_path), "backup_dir": str(backup_dir)}
+
+
+@pytest.fixture
+def mock_nginx_generator(test_nginx_dir, monkeypatch):
+    """Mock NginxConfigGenerator to use test directories."""
+    from nginx_manager.core.nginx import NginxConfigGenerator
+
+    def mock_init(self, config_path=None, backup_dir=None):
+        """Mock init that uses test directories."""
+        self.config_path = config_path or test_nginx_dir["config_path"]
+        self.backup_dir = backup_dir or test_nginx_dir["backup_dir"]
+        os.makedirs(self.backup_dir, exist_ok=True)
+
+    def mock_validate_config(self, config_content: str) -> tuple[bool, str]:
+        """Mock nginx validation - always succeeds in tests."""
+        return True, "Configuration valid (mocked)"
+
+    def mock_reload_nginx(self) -> tuple[bool, str]:
+        """Mock nginx reload - always succeeds in tests."""
+        return True, "Nginx reloaded (mocked)"
+
+    monkeypatch.setattr(NginxConfigGenerator, "__init__", mock_init)
+    monkeypatch.setattr(NginxConfigGenerator, "validate_config", mock_validate_config)
+    monkeypatch.setattr(NginxConfigGenerator, "reload_nginx", mock_reload_nginx)
+
+
+@pytest.fixture
+def client(db, mock_nginx_generator):
     """Create FastAPI test client."""
     from nginx_manager.core.database import get_db
 

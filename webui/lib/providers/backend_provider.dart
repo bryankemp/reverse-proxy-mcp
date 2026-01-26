@@ -94,12 +94,16 @@ class BackendProvider extends ChangeNotifier {
     required int port,
     String protocol = 'http',
     String description = '',
+    bool? isActive,
   }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      // Get existing backend to preserve fields not being updated
+      final existing = _backends.firstWhere((b) => b.id == id);
+      
       final backend = BackendServer(
         id: id,
         name: name,
@@ -107,9 +111,9 @@ class BackendProvider extends ChangeNotifier {
         port: port,
         protocol: protocol,
         description: description,
-        isActive: true,
-        createdBy: 0,
-        createdAt: DateTime.now(),
+        isActive: isActive ?? existing.isActive,
+        createdBy: existing.createdBy,
+        createdAt: existing.createdAt,
         updatedAt: DateTime.now(),
       );
 
@@ -135,7 +139,7 @@ class BackendProvider extends ChangeNotifier {
     }
   }
 
-  /// Delete backend
+  /// Delete backend (permanently removes from database)
   Future<bool> deleteBackend(int id) async {
     try {
       _isLoading = true;

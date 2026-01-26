@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 
 
 # User Schemas
@@ -46,6 +46,7 @@ class BackendServerBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     ip: str = Field(..., min_length=7, max_length=45)
     port: int = Field(default=80, ge=1, le=65535)
+    protocol: str = Field(default="http", pattern="^(http|https)$")
     service_description: str | None = None
 
 
@@ -61,6 +62,7 @@ class BackendServerUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     ip: str | None = Field(None, min_length=7, max_length=45)
     port: int | None = Field(None, ge=1, le=65535)
+    protocol: str | None = Field(None, pattern="^(http|https)$")
     service_description: str | None = None
     is_active: bool | None = None
 
@@ -86,6 +88,15 @@ class ProxyRuleBase(BaseModel):
     access_control: str = Field(default="public", pattern="^(public|internal)$")
     ip_whitelist: str | None = None
 
+    # Security settings
+    enable_hsts: bool = False
+    hsts_max_age: int = Field(default=31536000, ge=0)
+    enable_security_headers: bool = True
+    custom_headers: str | None = None  # JSON string
+    rate_limit: str | None = Field(None, pattern=r"^\d+r/[smh]$")  # e.g. "100r/s"
+    ssl_enabled: bool = True
+    force_https: bool = True
+
 
 class ProxyRuleCreate(ProxyRuleBase):
     """Proxy rule creation schema."""
@@ -102,6 +113,15 @@ class ProxyRuleUpdate(BaseModel):
     ip_whitelist: str | None = None
     is_active: bool | None = None
 
+    # Security settings
+    enable_hsts: bool | None = None
+    hsts_max_age: int | None = Field(None, ge=0)
+    enable_security_headers: bool | None = None
+    custom_headers: str | None = None
+    rate_limit: str | None = Field(None, pattern=r"^\d+r/[smh]$")
+    ssl_enabled: bool | None = None
+    force_https: bool | None = None
+
 
 class ProxyRuleResponse(ProxyRuleBase):
     """Proxy rule response schema."""
@@ -113,6 +133,10 @@ class ProxyRuleResponse(ProxyRuleBase):
     created_by: int | None = None
     created_at: datetime
     updated_at: datetime
+
+    # Inherited from ProxyRuleBase:
+    # enable_hsts, hsts_max_age, enable_security_headers,
+    # custom_headers, rate_limit, ssl_enabled, force_https
 
 
 # SSL Certificate Schemas
@@ -214,7 +238,12 @@ class TokenResponse(BaseModel):
 class LoginRequest(BaseModel):
     """Login request schema."""
 
-    username: str = Field(..., min_length=3)
+    username: str = Field(
+        ...,
+        min_length=3,
+        description="Username or email",
+        validation_alias=AliasChoices("username", "email"),
+    )
     password: str = Field(..., min_length=8)
 
 

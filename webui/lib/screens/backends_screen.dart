@@ -229,9 +229,25 @@ class _BackendsScreenState extends State<BackendsScreen> {
             itemBuilder: (context, index) {
               final backend = provider.backends[index];
               return Card(
+                color: backend.isActive ? null : Colors.grey[200],
                 child: ListTile(
-                  title: Text(backend.name),
-                  subtitle: Text('${backend.host}:${backend.port}'),
+                  leading: Icon(
+                    Icons.storage,
+                    color: backend.isActive ? Colors.blue : Colors.grey,
+                  ),
+                  title: Text(
+                    backend.name,
+                    style: TextStyle(
+                      color: backend.isActive ? null : Colors.grey[600],
+                      decoration: backend.isActive ? null : TextDecoration.lineThrough,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${backend.host}:${backend.port}${backend.isActive ? '' : ' (Inactive)'}',
+                    style: TextStyle(
+                      color: backend.isActive ? null : Colors.grey[600],
+                    ),
+                  ),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -239,7 +255,7 @@ class _BackendsScreenState extends State<BackendsScreen> {
                         onTap: () => _showEditDialog(backend),
                       ),
                       PopupMenuItem(
-                        child: Text(backend.isActive ? 'Disable' : 'Enable'),
+                        child: Text(backend.isActive ? 'Deactivate' : 'Activate'),
                         onTap: () =>
                             provider.updateBackend(
                               id: backend.id,
@@ -252,7 +268,32 @@ class _BackendsScreenState extends State<BackendsScreen> {
                       PopupMenuItem(
                         child: const Text('Delete'),
                         onTap: () async {
-                          await provider.deleteBackend(backend.id);
+                          // Show confirmation dialog
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Confirm Deletion'),
+                              content: Text(
+                                'Delete "${backend.name}" permanently? This cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await provider.deleteBackend(backend.id);
+                          }
                         },
                       ),
                     ],

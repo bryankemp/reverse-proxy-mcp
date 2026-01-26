@@ -12,6 +12,7 @@ from nginx_manager.models.schemas import (
     BackendServerResponse,
     BackendServerUpdate,
 )
+from nginx_manager.services.audit import AuditService
 
 router = APIRouter(prefix="/backends", tags=["backends"])
 
@@ -20,8 +21,8 @@ router = APIRouter(prefix="/backends", tags=["backends"])
 def list_backends(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
 ) -> list[BackendServerResponse]:
-    """List all backend servers."""
-    return db.query(BackendServer).filter(BackendServer.is_active).all()
+    """List all backend servers (including inactive)."""
+    return db.query(BackendServer).all()
 
 
 @router.get("/{backend_id}", response_model=BackendServerResponse)
@@ -44,8 +45,12 @@ def create_backend(
     current_user: User = Depends(require_admin),
 ) -> BackendServerResponse:
     """Create new backend server (admin only)."""
-    # Check if backend with same name exists
-    existing = db.query(BackendServer).filter(BackendServer.name == backend.name).first()
+    # Check if active backend with same name exists
+    existing = (
+        db.query(BackendServer)
+        .filter(BackendServer.name == backend.name, BackendServer.is_active == True)
+        .first()
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Backend name already exists"
@@ -55,6 +60,7 @@ def create_backend(
         name=backend.name,
         ip=backend.ip,
         port=backend.port,
+        protocol=backend.protocol,
         service_description=backend.service_description,
         created_by=current_user.id,
     )
@@ -62,14 +68,25 @@ def create_backend(
     db.commit()
     db.refresh(db_backend)
 
+    # Audit log
+    AuditService.log_action(
+        db, current_user, "created", "backend", str(db_backend.id), {"name": backend.name}
+    )
+
     # Auto-reload Nginx after backend creation
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Backend created but Nginx reload failed: {message}",
-        )
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            # Log the error but don't fail the request
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        # Log but don't fail
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
     return db_backend
 
@@ -86,9 +103,17 @@ def update_backend(
     if not db_backend:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backend not found")
 
-    # Check if new name conflicts
+    # Check if new name conflicts with active backends
     if backend_update.name and backend_update.name != db_backend.name:
-        existing = db.query(BackendServer).filter(BackendServer.name == backend_update.name).first()
+        existing = (
+            db.query(BackendServer)
+            .filter(
+                BackendServer.name == backend_update.name,
+                BackendServer.is_active == True,
+                BackendServer.id != backend_id,
+            )
+            .first()
+        )
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Backend name already exists"
@@ -100,6 +125,8 @@ def update_backend(
         db_backend.ip = backend_update.ip
     if backend_update.port:
         db_backend.port = backend_update.port
+    if backend_update.protocol:
+        db_backend.protocol = backend_update.protocol
     if backend_update.service_description is not None:
         db_backend.service_description = backend_update.service_description
     if backend_update.is_active is not None:
@@ -108,14 +135,23 @@ def update_backend(
     db.commit()
     db.refresh(db_backend)
 
+    # Audit log
+    AuditService.log_action(
+        db, current_user, "updated", "backend", str(backend_id), {"name": db_backend.name}
+    )
+
     # Auto-reload Nginx after backend update
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Backend updated but Nginx reload failed: {message}",
-        )
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
     return db_backend
 
@@ -126,22 +162,102 @@ def delete_backend(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> None:
-    """Delete backend server (soft delete, admin only)."""
+    """Permanently delete backend server (hard delete, admin only)."""
+    import logging
+    import traceback
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        logger.info(f"DELETE request for backend_id={backend_id} by user={current_user.username}")
+
+        db_backend = db.query(BackendServer).filter(BackendServer.id == backend_id).first()
+        if not db_backend:
+            logger.warning(f"Backend {backend_id} not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backend not found")
+
+        backend_name = db_backend.name
+        logger.info(f"Found backend: {backend_name}")
+
+        # Audit log before deletion
+        logger.info("Creating audit log entry...")
+        AuditService.log_action(
+            db,
+            current_user,
+            "permanently_deleted",
+            "backend",
+            str(backend_id),
+            {"name": backend_name},
+        )
+        logger.info("Audit log created successfully")
+
+        # Hard delete from database
+        logger.info("Deleting backend from database...")
+        db.delete(db_backend)
+        db.commit()
+        logger.info("Backend deleted and committed successfully")
+
+        # Auto-reload Nginx after permanent deletion
+        logger.info("Reloading Nginx config...")
+        try:
+            generator = NginxConfigGenerator()
+            success, message = generator.apply_config(db)
+            if not success:
+                logger.error(f"Nginx reload failed: {message}")
+            else:
+                logger.info("Nginx reload succeeded")
+        except Exception as nginx_e:
+            logger.error(f"Nginx reload exception: {nginx_e}")
+            logger.error(traceback.format_exc())
+
+        logger.info("Delete operation completed successfully")
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"CRITICAL ERROR in delete_backend: {type(e).__name__}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete backend: {str(e)}",
+        )
+
+
+@router.post("/{backend_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_backend(
+    backend_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> None:
+    """Deactivate backend server (marks as inactive, admin only)."""
     db_backend = db.query(BackendServer).filter(BackendServer.id == backend_id).first()
     if not db_backend:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backend not found")
 
+    # Soft delete - mark as inactive
     db_backend.is_active = False
     db.commit()
 
+    # Audit log
+    AuditService.log_action(
+        db, current_user, "deactivated", "backend", str(backend_id), {"name": db_backend.name}
+    )
+
     # Auto-reload Nginx after backend deletion
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Backend deleted but Nginx reload failed: {message}",
-        )
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
+
+    return None
 
 
 @router.post("/{backend_id}/test")

@@ -29,6 +29,11 @@ class ApiService {
 
   ApiService._internal(this._storage) {
     _initializeDio();
+    // Preload any stored token into headers to avoid race conditions
+    // with interceptors on the first request after app start.
+    // Intentionally not awaited; interceptor also fetches if still pending.
+    // ignore: discarded_futures
+    loadStoredToken();
   }
 
   factory ApiService(StorageService storage) {
@@ -49,6 +54,10 @@ class ApiService {
     );
 
     _dio = Dio(baseOptions);
+
+    // Set default headers if token already persisted (best-effort)
+    // This ensures even the very first request after app start carries the token
+    // once loadStoredToken resolves.
 
     // Add logging interceptor if enabled
     if (AppConfig.enableLogging) {
@@ -157,10 +166,12 @@ class ApiService {
         '/backends',
         data: {
           'name': name,
-          'host': host,
+          // Backend expects 'ip'
+          'ip': host,
           'port': port,
-          'protocol': protocol,
-          'description': description,
+          // Do not send unsupported fields to avoid 422
+          // 'protocol': protocol,
+          'service_description': description,
         },
       );
       return BackendServer.fromJson(response.data as Map<String, dynamic>);
@@ -187,7 +198,20 @@ class ApiService {
     }
   }
 
-  /// Delete backend
+  /// Deactivate backend (marks as inactive)
+  Future<void> deactivateBackend(int id) async {
+    try {
+      await _dio.post('/backends/$id/deactivate');
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to deactivate backend',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Delete backend (permanently removes from database)
   Future<void> deleteBackend(int id) async {
     try {
       await _dio.delete('/backends/$id');
@@ -245,10 +269,12 @@ class ApiService {
       final response = await _dio.post(
         '/proxy-rules',
         data: {
-          'domain': domain,
+          // Backend expects 'frontend_domain'
+          'frontend_domain': domain,
           'backend_id': backendId,
-          'path_pattern': pathPattern,
-          'rule_type': ruleType,
+          // Optional fields likely not supported yet
+          // 'path_pattern': pathPattern,
+          // 'rule_type': ruleType,
         },
       );
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
@@ -275,7 +301,20 @@ class ApiService {
     }
   }
 
-  /// Delete proxy rule
+  /// Deactivate proxy rule (marks as inactive)
+  Future<void> deactivateProxyRule(int id) async {
+    try {
+      await _dio.post('/proxy-rules/$id/deactivate');
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to deactivate proxy rule',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Delete proxy rule (permanently removes from database)
   Future<void> deleteProxyRule(int id) async {
     try {
       await _dio.delete('/proxy-rules/$id');
@@ -376,6 +415,28 @@ class ApiService {
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to fetch metrics',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Get current nginx configuration
+  Future<String> getNginxConfig() async {
+    try {
+      final response = await _dio.get('/config/nginx');
+      // If the response is a string, return it directly
+      if (response.data is String) {
+        return response.data as String;
+      }
+      // If it's a JSON object with a config field
+      if (response.data is Map && response.data['config'] != null) {
+        return response.data['config'] as String;
+      }
+      return response.data.toString();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to fetch nginx config',
         statusCode: e.response?.statusCode,
         originalError: e,
       );

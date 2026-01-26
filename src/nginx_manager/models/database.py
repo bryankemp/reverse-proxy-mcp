@@ -54,6 +54,7 @@ class BackendServer(Base):
     name = Column(String(255), unique=True, index=True, nullable=False)
     ip = Column(String(45), nullable=False)  # IPv4 or IPv6
     port = Column(Integer, nullable=False, default=80)
+    protocol = Column(String(10), nullable=False, default="http")  # http or https
     service_description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -81,6 +82,16 @@ class ProxyRule(Base):
     access_control = Column(String(20), nullable=False, default="public")  # public or internal
     ip_whitelist = Column(Text, nullable=True)  # JSON list of allowed IPs
     is_active = Column(Boolean, default=True)
+
+    # Security settings
+    enable_hsts = Column(Boolean, default=False)
+    hsts_max_age = Column(Integer, default=31536000)  # 1 year in seconds
+    enable_security_headers = Column(Boolean, default=True)
+    custom_headers = Column(Text, nullable=True)  # JSON key-value pairs
+    rate_limit = Column(String(50), nullable=True)  # e.g. "100r/s"
+    ssl_enabled = Column(Boolean, default=True)
+    force_https = Column(Boolean, default=True)  # HTTP to HTTPS redirect
+
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

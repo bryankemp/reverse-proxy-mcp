@@ -12,14 +12,12 @@ class RulesScreen extends StatefulWidget {
 }
 
 class _RulesScreenState extends State<RulesScreen> {
-  late TextEditingController _nameController;
   late TextEditingController _domainController;
   late TextEditingController _backendIdController;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
     _domainController = TextEditingController();
     _backendIdController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -29,14 +27,12 @@ class _RulesScreenState extends State<RulesScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _domainController.dispose();
     _backendIdController.dispose();
     super.dispose();
   }
 
   void _showCreateDialog() {
-    _nameController.clear();
     _domainController.clear();
     _backendIdController.clear();
 
@@ -48,14 +44,6 @@ class _RulesScreenState extends State<RulesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Rule Name',
-                  hintText: 'e.g., Web Rule',
-                ),
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: _domainController,
                 decoration: const InputDecoration(
@@ -82,10 +70,16 @@ class _RulesScreenState extends State<RulesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final backendIdText = _backendIdController.text.trim();
+              if (_domainController.text.trim().isEmpty || backendIdText.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in all fields')),
+                );
+                return;
+              }
               await context.read<RuleProvider>().createRule(
-                    name: _nameController.text,
-                    domain: _domainController.text,
-                    backendId: int.parse(_backendIdController.text),
+                    domain: _domainController.text.trim(),
+                    backendId: int.parse(backendIdText),
                   );
               if (mounted) Navigator.pop(context);
             },
@@ -97,7 +91,6 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _showEditDialog(ProxyRule rule) {
-    _nameController.text = rule.domain;
     _domainController.text = rule.domain;
     _backendIdController.text = rule.backendId.toString();
 
@@ -109,11 +102,6 @@ class _RulesScreenState extends State<RulesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Rule Name'),
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: _domainController,
                 decoration: const InputDecoration(labelText: 'Domain'),
@@ -134,11 +122,17 @@ class _RulesScreenState extends State<RulesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final backendIdText = _backendIdController.text.trim();
+              if (_domainController.text.trim().isEmpty || backendIdText.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in all fields')),
+                );
+                return;
+              }
               await context.read<RuleProvider>().updateRule(
                     id: rule.id,
-                    name: _nameController.text,
-                    domain: _domainController.text,
-                    backendId: int.parse(_backendIdController.text),
+                    domain: _domainController.text.trim(),
+                    backendId: int.parse(backendIdText),
                   );
               if (mounted) Navigator.pop(context);
             },

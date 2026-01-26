@@ -79,10 +79,13 @@ class BackendServer {
     return BackendServer(
       id: json['id'] as int? ?? 0,
       name: json['name'] as String? ?? '',
-      host: json['host'] as String? ?? '',
+      // Backend returns 'ip' not 'host'
+      host: json['ip'] as String? ?? json['host'] as String? ?? '',
       port: json['port'] as int? ?? 8080,
-      protocol: json['protocol'] as String? ?? 'http',
-      description: json['description'] as String? ?? '',
+      // Backend schema currently doesn't expose protocol; default to http
+      protocol: (json['protocol'] as String?) ?? 'http',
+      // Backend returns 'service_description'
+      description: json['service_description'] as String? ?? json['description'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
       createdBy: json['created_by'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
@@ -92,10 +95,15 @@ class BackendServer {
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'host': host,
+    // Backend expects 'ip'
+    'ip': host,
     'port': port,
+    // Backend now accepts protocol
     'protocol': protocol,
-    'description': description,
+    // Backend expects 'service_description'
+    'service_description': description,
+    // Include is_active for updates
+    'is_active': isActive,
   };
 
   String get displayUrl => '$protocol://$host:$port';
@@ -104,8 +112,9 @@ class BackendServer {
 /// Proxy Rule model
 class ProxyRule {
   final int id;
-  final String domain;
+  final String domain; // maps to backend 'frontend_domain'
   final int backendId;
+  // Optional fields; backend may not support these yet
   final String pathPattern;
   final String ruleType;
   final bool isActive;
@@ -128,8 +137,10 @@ class ProxyRule {
   factory ProxyRule.fromJson(Map<String, dynamic> json) {
     return ProxyRule(
       id: json['id'] as int? ?? 0,
-      domain: json['domain'] as String? ?? '',
+      // Backend uses 'frontend_domain'
+      domain: json['frontend_domain'] as String? ?? json['domain'] as String? ?? '',
       backendId: json['backend_id'] as int? ?? 0,
+      // Optional / not yet in backend – keep defaults if missing
       pathPattern: json['path_pattern'] as String? ?? '/',
       ruleType: json['rule_type'] as String? ?? 'reverse_proxy',
       isActive: json['is_active'] as bool? ?? true,
@@ -140,10 +151,11 @@ class ProxyRule {
   }
 
   Map<String, dynamic> toJson() => {
-    'domain': domain,
+    // Backend expects 'frontend_domain'
+    'frontend_domain': domain,
     'backend_id': backendId,
-    'path_pattern': pathPattern,
-    'rule_type': ruleType,
+    // Include is_active for updates
+    'is_active': isActive,
   };
 }
 

@@ -19,6 +19,52 @@ def get_config(db: Session = Depends(get_db), current_user: User = Depends(requi
     return {config.key: config.value for config in configs}
 
 
+# Nginx config endpoints (must come before /{key} to avoid path conflicts)
+@router.get("/nginx")
+def get_nginx_config(
+    db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+) -> dict:
+    """Get current Nginx configuration file content (admin only)."""
+    import os
+
+    from nginx_manager.core import settings
+    from nginx_manager.core.nginx import NginxConfigGenerator
+
+    generator = NginxConfigGenerator()
+    config_path = settings.nginx_config_path
+
+    # If config file doesn't exist, generate it
+    if not os.path.exists(config_path):
+        config = generator.generate_config(db)
+    else:
+        with open(config_path) as f:
+            config = f.read()
+
+    return {"config": config, "path": config_path}
+
+
+@router.post("/reload")
+def reload_nginx(
+    db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+) -> dict:
+    """Reload Nginx with current configuration (admin only)."""
+    from nginx_manager.core.nginx import NginxConfigGenerator
+
+    generator = NginxConfigGenerator()
+    success, message = generator.reload_nginx()
+
+    if not success:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
+
+    # Audit log
+    AuditService.log_config_changed(
+        db, current_user, {"action": "nginx_reload", "message": message}
+    )
+
+    return {"success": True, "message": message}
+
+
+# Config key/value endpoints
 @router.get("/{key}")
 def get_config_value(
     key: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin)
@@ -103,3 +149,85 @@ def cleanup_audit_logs(
     """Delete old audit logs (admin only)."""
     deleted_count = AuditService.cleanup_old_logs(db, days_retention)
     return {"detail": f"Deleted {deleted_count} audit logs older than {days_retention} days"}
+
+
+@router.get("/debug")
+def get_debug_info(
+    db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+) -> dict:
+    """Get debug information (admin only)."""
+    from nginx_manager.core import settings
+    from nginx_manager.models.database import BackendServer, ProxyRule
+
+    return {
+        "debug_mode": settings.debug,
+        "app_version": settings.app_version,
+        "backend_count": db.query(BackendServer).count(),
+        "active_backend_count": db.query(BackendServer).filter(BackendServer.is_active).count(),
+        "proxy_rule_count": db.query(ProxyRule).count(),
+        "active_proxy_rule_count": db.query(ProxyRule).filter(ProxyRule.is_active).count(),
+        "nginx_config_path": settings.nginx_config_path,
+        "database_url": settings.database_url,
+        "log_level": "DEBUG" if settings.debug else "INFO",
+    }
+
+
+# Security Config Endpoints
+@router.get("/security")
+def get_security_config(
+    db: Session = Depends(get_db), current_user: User = Depends(require_admin)
+) -> dict:
+    """Get security configuration (admin only)."""
+    import json
+
+    def get_config_value(key: str, default: str = "") -> str:
+        config = db.query(ProxyConfig).filter(ProxyConfig.key == key).first()
+        return config.value if config else default
+
+    headers_json = get_config_value("default_security_headers", "{}")
+    try:
+        headers = json.loads(headers_json)
+    except json.JSONDecodeError:
+        headers = {}
+
+    return {
+        "security_headers": headers,
+        "ssl_protocols": get_config_value("ssl_protocols", "TLSv1.2 TLSv1.3"),
+        "ssl_ciphers": get_config_value("ssl_ciphers", ""),
+        "rate_limit_zone": get_config_value("rate_limit_zone", "general:10m rate=100r/s"),
+        "server_tokens": get_config_value("server_tokens", "off"),
+        "enable_default_ssl_server": get_config_value("enable_default_ssl_server", "false")
+        == "true",
+    }
+
+
+@router.put("/security/headers")
+def update_security_headers(
+    headers: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> dict:
+    """Update security headers configuration (admin only)."""
+    import json
+
+    headers_json = json.dumps(headers)
+    config = db.query(ProxyConfig).filter(ProxyConfig.key == "default_security_headers").first()
+
+    if config:
+        old_value = config.value
+        config.value = headers_json
+    else:
+        old_value = None
+        config = ProxyConfig(key="default_security_headers", value=headers_json)
+        db.add(config)
+
+    db.commit()
+
+    # Audit log
+    AuditService.log_config_changed(
+        db,
+        current_user,
+        {"key": "default_security_headers", "old_value": old_value, "new_value": headers_json},
+    )
+
+    return {"success": True, "headers": headers}

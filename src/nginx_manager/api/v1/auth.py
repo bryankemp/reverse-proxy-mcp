@@ -35,7 +35,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             db.add(user)
             db.commit()
             db.refresh(user)
-        access_token = create_access_token(data={"sub": user.id})
+        access_token = create_access_token(data={"sub": str(user.id)})
         # Return token with user data
         return {
             "access_token": access_token,
@@ -53,8 +53,12 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             },
         }
 
-    # Fall back to database lookup for other users
-    user = db.query(User).filter(User.username == credentials.username).first()
+    # Fall back to database lookup for other users (by username or email)
+    user = (
+        db.query(User)
+        .filter((User.username == credentials.username) | (User.email == credentials.username))
+        .first()
+    )
 
     if not user or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(
@@ -68,7 +72,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             detail="User account is inactive",
         )
 
-    access_token = create_access_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
 
     return TokenResponse(access_token=access_token, expires_in=get_token_expiry_time())
 

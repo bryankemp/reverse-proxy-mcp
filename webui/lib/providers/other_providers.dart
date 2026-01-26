@@ -70,18 +70,21 @@ class RuleProvider extends ChangeNotifier {
     required int backendId,
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
+    bool? isActive,
   }) async {
     try {
       _isLoading = true;
+      // Get existing rule to preserve fields not being updated
+      final existing = _rules.firstWhere((r) => r.id == id);
       final rule = ProxyRule(
         id: id,
         domain: domain,
         backendId: backendId,
         pathPattern: pathPattern,
         ruleType: ruleType,
-        isActive: true,
-        createdBy: 0,
-        createdAt: DateTime.now(),
+        isActive: isActive ?? existing.isActive,
+        createdBy: existing.createdBy,
+        createdAt: existing.createdAt,
         updatedAt: DateTime.now(),
       );
       final updated = await _apiService.updateProxyRule(id, rule);

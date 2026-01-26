@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "Nginx Manager"
     app_version: str = "0.1.0"
-    debug: bool = False
+    debug: bool = True
 
     # Database
     database_url: str = "sqlite:///./data/nginx_manager.db"
@@ -30,12 +30,13 @@ class Settings(BaseSettings):
     mcp_port: int = 5000
 
     # Nginx Configuration
-    nginx_config_path: str = "/etc/nginx/sites-enabled/proxy.conf"
+    nginx_config_path: str = "/etc/nginx/conf.d/proxy.conf"
+    nginx_backup_dir: str = "/etc/nginx/backup"
     nginx_socket_path: str = "/var/run/nginx.sock"
     nginx_log_path: str = "/var/log/nginx"
 
     # Logging
-    log_level: str = "INFO"
+    log_level: str = "DEBUG"
 
     # Data Paths
     data_path: str = "./data"

@@ -20,8 +20,8 @@ router = APIRouter(prefix="/proxy-rules", tags=["proxy-rules"])
 def list_proxy_rules(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
 ) -> list[ProxyRuleResponse]:
-    """List all proxy rules."""
-    return db.query(ProxyRule).filter(ProxyRule.is_active).all()
+    """List all proxy rules (including inactive)."""
+    return db.query(ProxyRule).all()
 
 
 @router.get("/{rule_id}", response_model=ProxyRuleResponse)
@@ -44,8 +44,12 @@ def create_proxy_rule(
     current_user: User = Depends(require_admin),
 ) -> ProxyRuleResponse:
     """Create new proxy rule (admin only)."""
-    # Check if rule with same domain exists
-    existing = db.query(ProxyRule).filter(ProxyRule.frontend_domain == rule.frontend_domain).first()
+    # Check if active rule with same domain exists
+    existing = (
+        db.query(ProxyRule)
+        .filter(ProxyRule.frontend_domain == rule.frontend_domain, ProxyRule.is_active == True)
+        .first()
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Domain already has a rule"
@@ -56,6 +60,14 @@ def create_proxy_rule(
         backend_id=rule.backend_id,
         access_control=rule.access_control,
         ip_whitelist=rule.ip_whitelist,
+        # Security settings
+        enable_hsts=rule.enable_hsts,
+        hsts_max_age=rule.hsts_max_age,
+        enable_security_headers=rule.enable_security_headers,
+        custom_headers=rule.custom_headers,
+        rate_limit=rule.rate_limit,
+        ssl_enabled=rule.ssl_enabled,
+        force_https=rule.force_https,
         created_by=current_user.id,
     )
     db.add(db_rule)
@@ -63,13 +75,17 @@ def create_proxy_rule(
     db.refresh(db_rule)
 
     # Auto-reload Nginx after rule creation
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Rule created but Nginx reload failed: {message}",
-        )
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
     return db_rule
 
@@ -86,11 +102,15 @@ def update_proxy_rule(
     if not db_rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
 
-    # Check if new domain conflicts
+    # Check if new domain conflicts with active rules
     if rule_update.frontend_domain and rule_update.frontend_domain != db_rule.frontend_domain:
         existing = (
             db.query(ProxyRule)
-            .filter(ProxyRule.frontend_domain == rule_update.frontend_domain)
+            .filter(
+                ProxyRule.frontend_domain == rule_update.frontend_domain,
+                ProxyRule.is_active == True,
+                ProxyRule.id != rule_id,
+            )
             .first()
         )
         if existing:
@@ -109,19 +129,68 @@ def update_proxy_rule(
     if rule_update.is_active is not None:
         db_rule.is_active = rule_update.is_active
 
+    # Security settings
+    if rule_update.enable_hsts is not None:
+        db_rule.enable_hsts = rule_update.enable_hsts
+    if rule_update.hsts_max_age is not None:
+        db_rule.hsts_max_age = rule_update.hsts_max_age
+    if rule_update.enable_security_headers is not None:
+        db_rule.enable_security_headers = rule_update.enable_security_headers
+    if rule_update.custom_headers is not None:
+        db_rule.custom_headers = rule_update.custom_headers
+    if rule_update.rate_limit is not None:
+        db_rule.rate_limit = rule_update.rate_limit
+    if rule_update.ssl_enabled is not None:
+        db_rule.ssl_enabled = rule_update.ssl_enabled
+    if rule_update.force_https is not None:
+        db_rule.force_https = rule_update.force_https
+
     db.commit()
     db.refresh(db_rule)
 
     # Auto-reload Nginx after rule update
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Rule updated but Nginx reload failed: {message}",
-        )
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
     return db_rule
+
+
+@router.post("/{rule_id}/deactivate", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_proxy_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> None:
+    """Deactivate proxy rule (marks as inactive, admin only)."""
+    db_rule = db.query(ProxyRule).filter(ProxyRule.id == rule_id).first()
+    if not db_rule:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
+
+    # Soft delete - mark as inactive
+    db_rule.is_active = False
+    db.commit()
+
+    # Auto-reload Nginx after rule deletion
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
 
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -130,22 +199,27 @@ def delete_proxy_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> None:
-    """Delete proxy rule (soft delete, admin only)."""
+    """Permanently delete proxy rule (hard delete, admin only)."""
     db_rule = db.query(ProxyRule).filter(ProxyRule.id == rule_id).first()
     if not db_rule:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
 
-    db_rule.is_active = False
+    # Hard delete from database
+    db.delete(db_rule)
     db.commit()
 
-    # Auto-reload Nginx after rule deletion
-    generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
-    success, message = generator.apply_config(db)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Rule deleted but Nginx reload failed: {message}",
-        )
+    # Auto-reload Nginx after permanent deletion
+    try:
+        generator = NginxConfigGenerator()
+        success, message = generator.apply_config(db)
+        if not success:
+            import logging
+
+            logging.error(f"Nginx reload failed: {message}")
+    except Exception as e:
+        import logging
+
+        logging.error(f"Nginx reload exception: {e}")
 
 
 @router.post("/reload")
@@ -154,7 +228,7 @@ def reload_nginx(
 ) -> dict:
     """Hot reload Nginx configuration (admin only)."""
     try:
-        generator = NginxConfigGenerator(config_path="/etc/nginx/nginx.conf")
+        generator = NginxConfigGenerator()
         success, message = generator.apply_config(db)
 
         if success:
