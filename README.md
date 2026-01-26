@@ -60,13 +60,13 @@ cd reverse-proxy-mcp
 cp .env.example .env
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Access the WebUI
-# http://localhost:8080
+# http://localhost (default credentials: admin / password)
 
 # API documentation
-# http://localhost:8000/docs
+# http://localhost:5100/docs
 ```
 
 ### Local Development
