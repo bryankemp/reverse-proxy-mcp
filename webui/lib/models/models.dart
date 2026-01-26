@@ -114,10 +114,20 @@ class ProxyRule {
   final int id;
   final String domain; // maps to backend 'frontend_domain'
   final int backendId;
+  final String? accessControl;
+  final String? ipWhitelist;
   // Optional fields; backend may not support these yet
   final String pathPattern;
   final String ruleType;
   final bool isActive;
+  // Security fields
+  final bool enableHsts;
+  final int hstsMaxAge;
+  final bool enableSecurityHeaders;
+  final String? customHeaders;
+  final String? rateLimit;
+  final bool sslEnabled;
+  final bool forceHttps;
   final int createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -126,9 +136,18 @@ class ProxyRule {
     required this.id,
     required this.domain,
     required this.backendId,
+    this.accessControl,
+    this.ipWhitelist,
     required this.pathPattern,
     required this.ruleType,
     required this.isActive,
+    this.enableHsts = false,
+    this.hstsMaxAge = 31536000,
+    this.enableSecurityHeaders = true,
+    this.customHeaders,
+    this.rateLimit,
+    this.sslEnabled = true,
+    this.forceHttps = true,
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
@@ -140,10 +159,20 @@ class ProxyRule {
       // Backend uses 'frontend_domain'
       domain: json['frontend_domain'] as String? ?? json['domain'] as String? ?? '',
       backendId: json['backend_id'] as int? ?? 0,
+      accessControl: json['access_control'] as String?,
+      ipWhitelist: json['ip_whitelist'] as String?,
       // Optional / not yet in backend – keep defaults if missing
       pathPattern: json['path_pattern'] as String? ?? '/',
       ruleType: json['rule_type'] as String? ?? 'reverse_proxy',
       isActive: json['is_active'] as bool? ?? true,
+      // Security fields
+      enableHsts: json['enable_hsts'] as bool? ?? false,
+      hstsMaxAge: json['hsts_max_age'] as int? ?? 31536000,
+      enableSecurityHeaders: json['enable_security_headers'] as bool? ?? true,
+      customHeaders: json['custom_headers'] as String?,
+      rateLimit: json['rate_limit'] as String?,
+      sslEnabled: json['ssl_enabled'] as bool? ?? true,
+      forceHttps: json['force_https'] as bool? ?? true,
       createdBy: json['created_by'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
       updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
@@ -154,8 +183,18 @@ class ProxyRule {
     // Backend expects 'frontend_domain'
     'frontend_domain': domain,
     'backend_id': backendId,
+    if (accessControl != null) 'access_control': accessControl,
+    if (ipWhitelist != null) 'ip_whitelist': ipWhitelist,
     // Include is_active for updates
     'is_active': isActive,
+    // Security fields
+    'enable_hsts': enableHsts,
+    'hsts_max_age': hstsMaxAge,
+    'enable_security_headers': enableSecurityHeaders,
+    if (customHeaders != null) 'custom_headers': customHeaders,
+    if (rateLimit != null) 'rate_limit': rateLimit,
+    'ssl_enabled': sslEnabled,
+    'force_https': forceHttps,
   };
 }
 
