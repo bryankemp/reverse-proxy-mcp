@@ -129,31 +129,62 @@ def test_update_and_delete_workflow(client, admin_token, db):
 
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Certificate endpoint requires file uploads, not JSON")
-def test_certificate_workflow(client, admin_token):
-    """Test certificate creation and management."""
-    cert_data = {
-        "domain": "test.example.com",
-        "cert_file": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
-        "key_file": "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----",
-    }
+def test_certificate_assignment_workflow(client, admin_token, db):
+    """Test complete certificate workflow: upload -> assign to rule -> verify."""
+    from reverse_proxy_mcp.models.database import SSLCertificate
 
-    # Create certificate
+    # 1. Create a backend first
+    backend_data = {"name": "Cert Test Backend", "ip": "192.168.1.100", "port": 8080}
     response = client.post(
-        "/api/v1/certificates", json=cert_data, headers={"Authorization": f"Bearer {admin_token}"}
+        "/api/v1/backends", json=backend_data, headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 201
-    cert = response.json()
-    assert cert["domain"] == "test.example.com"
+    backend_id = response.json()["id"]
 
-    # Verify certificate is listed
+    # 2. Create a wildcard certificate manually in DB (file upload testing is complex)
+    wildcard_cert = SSLCertificate(
+        name="Wildcard Test",
+        domain="*.test.com",
+        cert_path="/etc/nginx/certs/wildcard_test.crt",
+        key_path="/etc/nginx/certs/wildcard_test.key",
+        certificate_type="wildcard",
+        is_default=True,
+        uploaded_by=1,
+    )
+    db.add(wildcard_cert)
+    db.commit()
+    db.refresh(wildcard_cert)
+
+    # 3. Create proxy rule with explicit certificate assignment
+    rule_data = {
+        "frontend_domain": "api.test.com",
+        "backend_id": backend_id,
+        "certificate_id": wildcard_cert.id,
+    }
+    response = client.post(
+        "/api/v1/proxy-rules", json=rule_data, headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 201
+    rule = response.json()
+    assert rule["certificate_id"] == wildcard_cert.id
+
+    # 4. Create another rule without certificate (should use default)
+    rule_data2 = {"frontend_domain": "app.test.com", "backend_id": backend_id}
+    response = client.post(
+        "/api/v1/proxy-rules", json=rule_data2, headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 201
+    rule2 = response.json()
+    assert rule2["certificate_id"] is None  # Will use default
+
+    # 5. Verify certificate dropdown endpoint
     response = client.get(
-        "/api/v1/certificates", headers={"Authorization": f"Bearer {admin_token}"}
+        "/api/v1/certificates/dropdown", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
-    certs = response.json()
-    assert len(certs) >= 1
-    assert any(c["domain"] == "test.example.com" for c in certs)
+    dropdown_certs = response.json()
+    assert len(dropdown_certs) >= 1
+    assert any(c["name"] == "Wildcard Test" for c in dropdown_certs)
 
 
 @pytest.mark.integration

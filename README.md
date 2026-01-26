@@ -11,7 +11,7 @@ A containerized Nginx reverse proxy management system with REST API, Model Conte
 - 🔐 **Role-Based Access Control** - Admin and user roles with fine-grained permissions
 - 📊 **Monitoring** - Real-time metrics, historical analytics, per-backend performance tracking
 - 📝 **Audit Logging** - Complete change history and user activity tracking
-- 🔒 **SSL Management** - Upload and manage SSL certificates with expiry monitoring
+- 🔒 **SSL Management** - Upload and manage SSL certificates with wildcard support, default certificates, and expiry monitoring
 - 🐳 **Docker Ready** - Multi-container setup with docker-compose orchestration
 - 📚 **Documentation** - Comprehensive Read the Docs documentation
 
@@ -157,6 +157,78 @@ MCP_PORT=5000
 # Nginx Configuration
 NGINX_CONFIG_PATH=/etc/nginx/sites-enabled/proxy.conf
 NGINX_SOCKET_PATH=/var/run/nginx.sock
+```
+
+## SSL Certificate Management
+
+Reverse Proxy MCP provides comprehensive SSL certificate management:
+
+### Features
+
+- **Named Certificates** - Assign friendly names to certificate pairs (e.g., "Wildcard Kempville", "API Certificate")
+- **Wildcard Support** - Use wildcard certificates (*.example.com) across multiple subdomains
+- **Default Certificate** - Set a default certificate for domains without explicit assignment
+- **Certificate Assignment** - Assign specific certificates to individual proxy rules
+- **Automatic Resolution** - Certificates are resolved in order:
+  1. Explicit certificate assignment on proxy rule
+  2. Exact domain match
+  3. Wildcard domain match
+  4. Default certificate fallback
+- **Validation** - Certificate/key pair validation on upload
+- **Expiry Monitoring** - Track certificate expiration and get alerts
+
+### Certificate Upload
+
+Using the API:
+
+```bash
+# Upload a wildcard certificate as default
+curl -X POST http://localhost:5100/api/v1/certificates \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "name=Wildcard Kempville" \
+  -F "domain=*.kempville.com" \
+  -F "is_default=true" \
+  -F "cert_file=@/path/to/wildcard.crt" \
+  -F "key_file=@/path/to/wildcard.key"
+
+# Upload a domain-specific certificate
+curl -X POST http://localhost:5100/api/v1/certificates \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "name=API Certificate" \
+  -F "domain=api.example.com" \
+  -F "is_default=false" \
+  -F "cert_file=@/path/to/api.crt" \
+  -F "key_file=@/path/to/api.key"
+```
+
+### Assigning Certificates to Proxy Rules
+
+```bash
+# Create proxy rule with explicit certificate
+curl -X POST http://localhost:5100/api/v1/proxy-rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "frontend_domain": "api.kempville.com",
+    "backend_id": 1,
+    "certificate_id": 2
+  }'
+
+# Create proxy rule using default certificate (omit certificate_id)
+curl -X POST http://localhost:5100/api/v1/proxy-rules \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "frontend_domain": "app.kempville.com",
+    "backend_id": 1
+  }'
+```
+
+### List Available Certificates (for dropdowns)
+
+```bash
+curl -X GET http://localhost:5100/api/v1/certificates/dropdown \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## API Documentation

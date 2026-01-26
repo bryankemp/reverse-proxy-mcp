@@ -148,9 +148,7 @@ class CertificateService:
 
         # If setting as default, unset other defaults
         if is_default:
-            db.query(SSLCertificate).filter(SSLCertificate.is_default).update(
-                {"is_default": False}
-            )
+            db.query(SSLCertificate).filter(SSLCertificate.is_default).update({"is_default": False})
 
         # Create database record
         db_cert = SSLCertificate(
@@ -257,9 +255,7 @@ class CertificateService:
             raise ValueError(f"Certificate with ID {cert_id} not found")
 
         # Unset all other defaults
-        db.query(SSLCertificate).filter(SSLCertificate.is_default).update(
-            {"is_default": False}
-        )
+        db.query(SSLCertificate).filter(SSLCertificate.is_default).update({"is_default": False})
 
         # Set this one as default
         cert.is_default = True

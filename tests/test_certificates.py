@@ -1,7 +1,27 @@
 """Unit tests for certificate and configuration endpoints."""
 
+import io
+
 import pytest
 from fastapi import status
+
+# Sample self-signed certificate for testing
+TEST_CERT = """-----BEGIN CERTIFICATE-----
+MIICpDCCAYwCCQDU7T0Q3Qj5qTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAkq
+LnRlc3QuY29tMB4XDTIzMTIwMTAwMDAwMFoXDTI0MTIwMTAwMDAwMFowFDESMBAG
+A1UEAwwJKi50ZXN0LmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
+AKqK1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
+OPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZab
+IwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQBxyz123456789ABCDEFGHIJK
+-----END CERTIFICATE-----"""
+
+TEST_KEY = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCqitXYZabcdefgh
+ijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
+wxyzABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzABCDEFGHIJ
+KLMNOPQRSTUVWXYZabIDAQABAoIBAExample1234567890
+-----END PRIVATE KEY-----"""
 
 
 @pytest.mark.unit
@@ -14,6 +34,40 @@ class TestCertificates:
         assert response.status_code == status.HTTP_200_OK
         certs = response.json()
         assert isinstance(certs, list)
+
+    def test_list_certificates_dropdown(self, client, user_auth_headers):
+        """Test listing certificates for dropdown."""
+        response = client.get("/api/v1/certificates/dropdown", headers=user_auth_headers)
+        assert response.status_code == status.HTTP_200_OK
+        certs = response.json()
+        assert isinstance(certs, list)
+
+    def test_upload_certificate_unauthorized(self, client, user_auth_headers):
+        """Test uploading certificate as non-admin."""
+        files = {
+            "cert_file": ("cert.pem", io.BytesIO(TEST_CERT.encode()), "text/plain"),
+            "key_file": ("key.pem", io.BytesIO(TEST_KEY.encode()), "text/plain"),
+        }
+        data = {"name": "Test Certificate", "domain": "*.test.com", "is_default": "false"}
+        response = client.post(
+            "/api/v1/certificates", headers=user_auth_headers, files=files, data=data
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_get_certificate_not_found(self, client, user_auth_headers):
+        """Test getting nonexistent certificate."""
+        response = client.get("/api/v1/certificates/9999", headers=user_auth_headers)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_set_default_unauthorized(self, client, user_auth_headers):
+        """Test setting default certificate as non-admin."""
+        response = client.put("/api/v1/certificates/1/set-default", headers=user_auth_headers)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_delete_certificate_unauthorized(self, client, user_auth_headers):
+        """Test deleting certificate as non-admin."""
+        response = client.delete("/api/v1/certificates/1", headers=user_auth_headers)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_list_expiring_certificates(self, client, user_auth_headers):
         """Test listing expiring certificates."""
