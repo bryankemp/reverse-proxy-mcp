@@ -5,14 +5,54 @@ from datetime import datetime
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy.orm import Session
 
 from reverse_proxy_mcp.core.config import settings
-from reverse_proxy_mcp.models.database import SSLCertificate
+from reverse_proxy_mcp.models.database import ProxyRule, SSLCertificate
 
 
 class CertificateService:
     """Service for managing SSL certificates."""
+
+    @staticmethod
+    def validate_certificate_pair(cert_content: str, key_content: str) -> bool:
+        """Validate that certificate and private key match.
+
+        Args:
+            cert_content: PEM-encoded certificate
+            key_content: PEM-encoded private key
+
+        Returns:
+            True if cert/key pair is valid and matches
+
+        Raises:
+            ValueError: If certificate or key is invalid
+        """
+        try:
+            # Load certificate
+            cert = x509.load_pem_x509_certificate(cert_content.encode(), default_backend())
+
+            # Load private key
+            private_key = serialization.load_pem_private_key(
+                key_content.encode(), password=None, backend=default_backend()
+            )
+
+            # Verify the key matches the certificate by checking public key
+            cert_public_key = cert.public_key()
+            key_public_key = private_key.public_key()
+
+            # Compare public key numbers (works for RSA)
+            if isinstance(private_key, rsa.RSAPrivateKey):
+                cert_numbers = cert_public_key.public_numbers()
+                key_numbers = key_public_key.public_numbers()
+                if cert_numbers.n != key_numbers.n or cert_numbers.e != key_numbers.e:
+                    raise ValueError("Certificate and private key do not match")
+
+            return True
+        except Exception as e:
+            raise ValueError(f"Invalid certificate or key: {str(e)}") from e
 
     @staticmethod
     def parse_certificate_expiry(cert_content: str) -> datetime | None:
@@ -32,11 +72,13 @@ class CertificateService:
             return None
 
     @staticmethod
-    def save_certificate_files(domain: str, cert_content: str, key_content: str) -> tuple[str, str]:
+    def save_certificate_files(
+        cert_name: str, cert_content: str, key_content: str
+    ) -> tuple[str, str]:
         """Save certificate and key files to disk.
 
         Args:
-            domain: Certificate domain name
+            cert_name: Certificate name (used for filename)
             cert_content: PEM-encoded certificate
             key_content: PEM-encoded private key
 
@@ -48,8 +90,10 @@ class CertificateService:
         """
         os.makedirs(settings.certs_path, exist_ok=True)
 
-        cert_path = os.path.join(settings.certs_path, f"{domain}.crt")
-        key_path = os.path.join(settings.certs_path, f"{domain}.key")
+        # Use sanitized cert_name for file naming
+        safe_name = cert_name.replace(" ", "_").replace("/", "_")
+        cert_path = os.path.join(settings.certs_path, f"{safe_name}.crt")
+        key_path = os.path.join(settings.certs_path, f"{safe_name}.key")
 
         with open(cert_path, "w") as f:
             f.write(cert_content)
@@ -63,33 +107,59 @@ class CertificateService:
 
     @staticmethod
     def create_certificate(
-        db: Session, domain: str, cert_content: str, key_content: str, user_id: int
+        db: Session,
+        name: str,
+        domain: str,
+        cert_content: str,
+        key_content: str,
+        user_id: int,
+        is_default: bool = False,
     ) -> SSLCertificate:
         """Create and store a new certificate.
 
         Args:
             db: Database session
-            domain: Certificate domain
+            name: Friendly name for certificate
+            domain: Certificate domain (can be wildcard)
             cert_content: PEM-encoded certificate
             key_content: PEM-encoded private key
             user_id: ID of user uploading certificate
+            is_default: Whether this is the default certificate
 
         Returns:
             Created certificate record
+
+        Raises:
+            ValueError: If certificate/key validation fails
         """
+        # Validate certificate/key pair
+        CertificateService.validate_certificate_pair(cert_content, key_content)
+
         # Parse expiry date
         expiry_date = CertificateService.parse_certificate_expiry(cert_content)
 
+        # Determine certificate type
+        cert_type = "wildcard" if domain.startswith("*") else "domain-specific"
+
         # Save files to disk
         cert_path, key_path = CertificateService.save_certificate_files(
-            domain, cert_content, key_content
+            name, cert_content, key_content
         )
+
+        # If setting as default, unset other defaults
+        if is_default:
+            db.query(SSLCertificate).filter(SSLCertificate.is_default).update(
+                {"is_default": False}
+            )
 
         # Create database record
         db_cert = SSLCertificate(
+            name=name,
             domain=domain,
             cert_path=cert_path,
             key_path=key_path,
+            certificate_type=cert_type,
+            is_default=is_default,
             expiry_date=expiry_date,
             uploaded_by=user_id,
         )
@@ -167,3 +237,87 @@ class CertificateService:
             )
             .all()
         )
+
+    @staticmethod
+    def set_default_certificate(db: Session, cert_id: int) -> SSLCertificate:
+        """Set a certificate as the default.
+
+        Args:
+            db: Database session
+            cert_id: Certificate ID to set as default
+
+        Returns:
+            Updated certificate
+
+        Raises:
+            ValueError: If certificate not found
+        """
+        cert = db.query(SSLCertificate).filter(SSLCertificate.id == cert_id).first()
+        if not cert:
+            raise ValueError(f"Certificate with ID {cert_id} not found")
+
+        # Unset all other defaults
+        db.query(SSLCertificate).filter(SSLCertificate.is_default).update(
+            {"is_default": False}
+        )
+
+        # Set this one as default
+        cert.is_default = True
+        db.commit()
+        db.refresh(cert)
+        return cert
+
+    @staticmethod
+    def get_default_certificate(db: Session) -> SSLCertificate | None:
+        """Get the default certificate.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Default certificate or None
+        """
+        return db.query(SSLCertificate).filter(SSLCertificate.is_default).first()
+
+    @staticmethod
+    def get_certificate_for_rule(db: Session, rule: ProxyRule) -> SSLCertificate | None:
+        """Get the appropriate certificate for a proxy rule.
+
+        Resolution order:
+        1. Explicit certificate_id on rule
+        2. Certificate matching frontend_domain (exact or wildcard match)
+        3. Default certificate
+
+        Args:
+            db: Database session
+            rule: Proxy rule
+
+        Returns:
+            Certificate to use or None
+        """
+        # 1. Check if rule has explicit certificate
+        if rule.certificate_id:
+            return db.query(SSLCertificate).filter(SSLCertificate.id == rule.certificate_id).first()
+
+        # 2. Try to find exact domain match
+        exact_match = (
+            db.query(SSLCertificate).filter(SSLCertificate.domain == rule.frontend_domain).first()
+        )
+        if exact_match:
+            return exact_match
+
+        # 3. Try wildcard match (e.g., *.example.com matches api.example.com)
+        if "." in rule.frontend_domain:
+            parts = rule.frontend_domain.split(".", 1)
+            if len(parts) == 2:
+                wildcard_domain = f"*.{parts[1]}"
+                wildcard_match = (
+                    db.query(SSLCertificate)
+                    .filter(SSLCertificate.domain == wildcard_domain)
+                    .first()
+                )
+                if wildcard_match:
+                    return wildcard_match
+
+        # 4. Fall back to default certificate
+        return CertificateService.get_default_certificate(db)

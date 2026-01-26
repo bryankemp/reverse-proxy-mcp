@@ -85,6 +85,7 @@ class ProxyRuleBase(BaseModel):
 
     frontend_domain: str = Field(..., min_length=5, max_length=255)
     backend_id: int
+    certificate_id: int | None = None  # NULL = use default certificate
     access_control: str = Field(default="public", pattern="^(public|internal)$")
     ip_whitelist: str | None = None
 
@@ -109,6 +110,7 @@ class ProxyRuleUpdate(BaseModel):
 
     frontend_domain: str | None = Field(None, min_length=5, max_length=255)
     backend_id: int | None = None
+    certificate_id: int | None = None
     access_control: str | None = Field(None, pattern="^(public|internal)$")
     ip_whitelist: str | None = None
     is_active: bool | None = None
@@ -133,9 +135,10 @@ class ProxyRuleResponse(ProxyRuleBase):
     created_by: int | None = None
     created_at: datetime
     updated_at: datetime
+    certificate_name: str | None = None  # Populated from join with certificates table
 
     # Inherited from ProxyRuleBase:
-    # enable_hsts, hsts_max_age, enable_security_headers,
+    # certificate_id, enable_hsts, hsts_max_age, enable_security_headers,
     # custom_headers, rate_limit, ssl_enabled, force_https
 
 
@@ -143,21 +146,27 @@ class ProxyRuleResponse(ProxyRuleBase):
 class SSLCertificateBase(BaseModel):
     """Base SSL certificate schema."""
 
-    domain: str = Field(..., min_length=5, max_length=255)
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="Friendly name for certificate"
+    )
+    domain: str = Field(
+        ..., min_length=1, max_length=255, description="Domain pattern (e.g., *.example.com)"
+    )
 
 
 class SSLCertificateCreate(BaseModel):
-    """SSL certificate creation schema."""
+    """SSL certificate creation schema (used with multipart form)."""
 
-    domain: str = Field(..., min_length=5, max_length=255)
-    cert_file: str  # File content (base64 or raw)
-    key_file: str  # File content (base64 or raw)
+    name: str = Field(..., min_length=1, max_length=255)
+    domain: str = Field(..., min_length=1, max_length=255)
+    is_default: bool = False
 
 
 class SSLCertificateUpdate(BaseModel):
     """SSL certificate update schema."""
 
-    expiry_date: datetime | None = None
+    name: str | None = Field(None, min_length=1, max_length=255)
+    is_default: bool | None = None
 
 
 class SSLCertificateResponse(SSLCertificateBase):
@@ -168,10 +177,24 @@ class SSLCertificateResponse(SSLCertificateBase):
     id: int
     cert_path: str
     key_path: str
+    certificate_type: str
+    is_default: bool
     expiry_date: datetime | None = None
     uploaded_by: int | None = None
     uploaded_at: datetime
     updated_at: datetime
+
+
+class CertificateListItem(BaseModel):
+    """Simplified certificate info for dropdowns."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    domain: str
+    is_default: bool
+    expiry_date: datetime | None = None
 
 
 # Configuration Schemas

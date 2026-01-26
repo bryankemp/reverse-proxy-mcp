@@ -1,12 +1,12 @@
 """SSL certificate management endpoints."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from reverse_proxy_mcp.api.dependencies import require_admin, require_user
 from reverse_proxy_mcp.core import get_db
 from reverse_proxy_mcp.models.database import User
-from reverse_proxy_mcp.models.schemas import SSLCertificateResponse
+from reverse_proxy_mcp.models.schemas import CertificateListItem, SSLCertificateResponse
 from reverse_proxy_mcp.services.audit import AuditService
 from reverse_proxy_mcp.services.certificate import CertificateService
 
@@ -21,12 +21,22 @@ def list_certificates(
     return CertificateService.get_all_certificates(db)
 
 
-@router.get("/{domain}", response_model=SSLCertificateResponse)
+@router.get("/dropdown", response_model=list[CertificateListItem])
+def list_certificates_for_dropdown(
+    db: Session = Depends(get_db), current_user: User = Depends(require_user)
+) -> list[CertificateListItem]:
+    """List certificates in simplified format for UI dropdowns."""
+    return CertificateService.get_all_certificates(db)
+
+
+@router.get("/{cert_id}", response_model=SSLCertificateResponse)
 def get_certificate(
-    domain: str, db: Session = Depends(get_db), current_user: User = Depends(require_user)
+    cert_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_user)
 ) -> SSLCertificateResponse:
-    """Get certificate details."""
-    cert = CertificateService.get_certificate_by_domain(db, domain)
+    """Get certificate details by ID."""
+    from reverse_proxy_mcp.models.database import SSLCertificate
+
+    cert = db.query(SSLCertificate).filter(SSLCertificate.id == cert_id).first()
     if not cert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
     return cert
@@ -34,19 +44,31 @@ def get_certificate(
 
 @router.post("", response_model=SSLCertificateResponse, status_code=status.HTTP_201_CREATED)
 async def upload_certificate(
-    domain: str,
+    name: str = Form(...),
+    domain: str = Form(...),
+    is_default: bool = Form(False),
     cert_file: UploadFile = File(...),
     key_file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> SSLCertificateResponse:
-    """Upload SSL certificate (admin only)."""
-    # Check if certificate already exists
-    existing = CertificateService.get_certificate_by_domain(db, domain)
+    """Upload SSL certificate (admin only).
+
+    Args:
+        name: Friendly name for certificate (e.g., "Wildcard Kempville")
+        domain: Domain pattern (e.g., "*.kempville.com" or "api.example.com")
+        is_default: Whether to set as default certificate
+        cert_file: PEM-encoded certificate file
+        key_file: PEM-encoded private key file
+    """
+    from reverse_proxy_mcp.models.database import SSLCertificate
+
+    # Check if certificate name already exists
+    existing = db.query(SSLCertificate).filter(SSLCertificate.name == name).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Certificate for this domain already exists",
+            detail=f"Certificate with name '{name}' already exists",
         )
 
     try:
@@ -60,37 +82,77 @@ async def upload_certificate(
         if isinstance(key_content, bytes):
             key_content = key_content.decode("utf-8")
 
-        # Create certificate
+        # Create certificate (validation happens inside)
         new_cert = CertificateService.create_certificate(
-            db, domain, cert_content, key_content, current_user.id
+            db, name, domain, cert_content, key_content, current_user.id, is_default
         )
 
         # Audit log
         AuditService.log_action(
-            db, current_user, "uploaded", "certificate", domain, {"domain": domain}
+            db,
+            current_user,
+            "uploaded",
+            "certificate",
+            str(new_cert.id),
+            {"name": name, "domain": domain, "is_default": is_default},
         )
 
         return new_cert
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid certificate: {str(e)}",
+            detail=str(e),
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload certificate: {str(e)}",
         ) from e
 
 
-@router.delete("/{domain}", status_code=status.HTTP_204_NO_CONTENT)
+@router.put("/{cert_id}/set-default", response_model=SSLCertificateResponse)
+def set_default_certificate(
+    cert_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> SSLCertificateResponse:
+    """Set certificate as default (admin only)."""
+    try:
+        cert = CertificateService.set_default_certificate(db, cert_id)
+
+        # Audit log
+        AuditService.log_action(
+            db, current_user, "updated", "certificate", str(cert_id), {"is_default": True}
+        )
+
+        return cert
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+
+@router.delete("/{cert_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_certificate(
-    domain: str,
+    cert_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> None:
-    """Delete certificate (admin only)."""
-    success = CertificateService.delete_certificate(db, domain)
-    if not success:
+    """Delete certificate by ID (admin only)."""
+    from reverse_proxy_mcp.models.database import SSLCertificate
+
+    cert = db.query(SSLCertificate).filter(SSLCertificate.id == cert_id).first()
+    if not cert:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
 
+    success = CertificateService.delete_certificate(db, cert.domain)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete certificate"
+        )
+
     # Audit log
-    AuditService.log_action(db, current_user, "deleted", "certificate", domain)
+    AuditService.log_action(
+        db, current_user, "deleted", "certificate", str(cert_id), {"name": cert.name}
+    )
 
 
 @router.get("/{domain}/expiry-status")

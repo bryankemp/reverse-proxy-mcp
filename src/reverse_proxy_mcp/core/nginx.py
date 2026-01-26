@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from reverse_proxy_mcp.core.logging import get_logger, log_nginx_operation
 from reverse_proxy_mcp.models.database import BackendServer, ProxyConfig, ProxyRule
+from reverse_proxy_mcp.services.certificate import CertificateService
 
 logger = get_logger(__name__)
 
@@ -53,9 +54,14 @@ server {
     listen 443 ssl;
     server_name {{ rule.frontend_domain }};
 
-    # SSL certificate (TODO: integrate with SSLCertificate table)
+    # SSL certificate
+    {% if rule.cert_path and rule.key_path %}
+    ssl_certificate {{ rule.cert_path }};
+    ssl_certificate_key {{ rule.key_path }};
+    {% elif default_ssl_cert_path and default_ssl_key_path %}
     ssl_certificate {{ default_ssl_cert_path }};
     ssl_certificate_key {{ default_ssl_key_path }};
+    {% endif %}
     {% else %}
     listen 80;
     server_name {{ rule.frontend_domain }};
@@ -146,6 +152,11 @@ class NginxConfigGenerator:
             # Get backend
             backend = db.query(BackendServer).filter(BackendServer.id == rule.backend_id).first()
 
+            # Get certificate for this rule
+            cert = CertificateService.get_certificate_for_rule(db, rule)
+            cert_path = cert.cert_path if cert else None
+            key_path = cert.key_path if cert else None
+
             ip_list = []
             if rule.ip_whitelist:
                 try:
@@ -177,6 +188,8 @@ class NginxConfigGenerator:
                     "rate_limit": rule.rate_limit,
                     "ssl_enabled": rule.ssl_enabled,
                     "force_https": rule.force_https,
+                    "cert_path": cert_path,
+                    "key_path": key_path,
                 }
             )
 

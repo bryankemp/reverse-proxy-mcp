@@ -21,7 +21,20 @@ def list_proxy_rules(
     db: Session = Depends(get_db), current_user: User = Depends(require_user)
 ) -> list[ProxyRuleResponse]:
     """List all proxy rules (including inactive)."""
-    return db.query(ProxyRule).all()
+    from reverse_proxy_mcp.models.database import SSLCertificate
+
+    rules = db.query(ProxyRule).all()
+
+    # Populate certificate_name for each rule
+    result = []
+    for rule in rules:
+        rule_dict = ProxyRuleResponse.model_validate(rule).model_dump()
+        if rule.certificate_id:
+            cert = db.query(SSLCertificate).filter(SSLCertificate.id == rule.certificate_id).first()
+            rule_dict["certificate_name"] = cert.name if cert else None
+        result.append(ProxyRuleResponse(**rule_dict))
+
+    return result
 
 
 @router.get("/{rule_id}", response_model=ProxyRuleResponse)
@@ -58,6 +71,7 @@ def create_proxy_rule(
     db_rule = ProxyRule(
         frontend_domain=rule.frontend_domain,
         backend_id=rule.backend_id,
+        certificate_id=rule.certificate_id,
         access_control=rule.access_control,
         ip_whitelist=rule.ip_whitelist,
         # Security settings
@@ -122,6 +136,8 @@ def update_proxy_rule(
         db_rule.frontend_domain = rule_update.frontend_domain
     if rule_update.backend_id:
         db_rule.backend_id = rule_update.backend_id
+    if rule_update.certificate_id is not None:
+        db_rule.certificate_id = rule_update.certificate_id
     if rule_update.access_control:
         db_rule.access_control = rule_update.access_control
     if rule_update.ip_whitelist is not None:

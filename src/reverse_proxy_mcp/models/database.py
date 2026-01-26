@@ -79,6 +79,9 @@ class ProxyRule(Base):
     id = Column(Integer, primary_key=True, index=True)
     frontend_domain = Column(String(255), unique=True, index=True, nullable=False)
     backend_id = Column(Integer, ForeignKey("backend_servers.id"), nullable=False)
+    certificate_id = Column(
+        Integer, ForeignKey("ssl_certificates.id"), nullable=True
+    )  # NULL = use default
     access_control = Column(String(20), nullable=False, default="public")  # public or internal
     ip_whitelist = Column(Text, nullable=True)  # JSON list of allowed IPs
     is_active = Column(Boolean, default=True)
@@ -98,6 +101,7 @@ class ProxyRule(Base):
 
     # Relationships
     backend = relationship("BackendServer", back_populates="proxy_rules")
+    certificate = relationship("SSLCertificate", back_populates="proxy_rules")
     created_by_user = relationship("User", back_populates="created_rules")
 
     def __repr__(self) -> str:
@@ -113,16 +117,26 @@ class SSLCertificate(Base):
     __tablename__ = "ssl_certificates"
 
     id = Column(Integer, primary_key=True, index=True)
-    domain = Column(String(255), unique=True, index=True, nullable=False)
+    name = Column(String(255), unique=True, index=True, nullable=False)  # Friendly name
+    domain = Column(String(255), index=True, nullable=False)  # Can be wildcard like *.example.com
     cert_path = Column(String(500), nullable=False)
     key_path = Column(String(500), nullable=False)
+    is_default = Column(
+        Boolean, default=False, nullable=False
+    )  # Default cert for unmatched domains
+    certificate_type = Column(String(20), nullable=False)  # wildcard or domain-specific
     expiry_date = Column(DateTime, nullable=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Relationships
+    proxy_rules = relationship("ProxyRule", back_populates="certificate")
+
     def __repr__(self) -> str:
-        return f"<SSLCertificate(domain={self.domain}, expiry={self.expiry_date})>"
+        return (
+            f"<SSLCertificate(name={self.name}, domain={self.domain}, default={self.is_default})>"
+        )
 
 
 class AuditLog(Base):
