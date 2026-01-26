@@ -95,12 +95,18 @@ class MCPAPIClient:
             logger.error(error_msg)
             raise ValueError(error_msg) from e
 
-    def post(self, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    def post(
+        self,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Make POST request to API.
 
         Args:
             endpoint: API endpoint
-            data: Request body as dictionary
+            data: Request body as dictionary (or form data if files provided)
+            files: Files to upload (multipart/form-data)
 
         Returns:
             Response JSON as dictionary
@@ -110,7 +116,12 @@ class MCPAPIClient:
         """
         url = f"{self.api_url}/api/v1{endpoint}"
         try:
-            response = self.session.post(url, json=data, timeout=10)
+            if files:
+                # Use multipart form data with files
+                response = self.session.post(url, data=data, files=files, timeout=10)
+            else:
+                # Use JSON body
+                response = self.session.post(url, json=data, timeout=10)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError:

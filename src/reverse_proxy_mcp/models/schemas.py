@@ -35,6 +35,7 @@ class UserResponse(UserBase):
 
     id: int
     is_active: bool
+    must_change_password: bool
     created_at: datetime
     updated_at: datetime
 
@@ -86,7 +87,7 @@ class ProxyRuleBase(BaseModel):
     frontend_domain: str = Field(..., min_length=5, max_length=255)
     backend_id: int
     certificate_id: int | None = None  # NULL = use default certificate
-    access_control: str = Field(default="public", pattern="^(public|internal)$")
+    access_control: str = Field(default="public", pattern="^(public|private|internal)$")
     ip_whitelist: str | None = None
 
     # Security settings
@@ -111,7 +112,7 @@ class ProxyRuleUpdate(BaseModel):
     frontend_domain: str | None = Field(None, min_length=5, max_length=255)
     backend_id: int | None = None
     certificate_id: int | None = None
-    access_control: str | None = Field(None, pattern="^(public|internal)$")
+    access_control: str | None = Field(None, pattern="^(public|private|internal)$")
     ip_whitelist: str | None = None
     is_active: bool | None = None
 
@@ -197,6 +198,13 @@ class CertificateListItem(BaseModel):
     expiry_date: datetime | None = None
 
 
+class ChangePasswordRequest(BaseModel):
+    """Password change request schema."""
+
+    old_password: str | None = Field(None, min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
 # Configuration Schemas
 class ConfigBase(BaseModel):
     """Base configuration schema."""
@@ -256,6 +264,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: dict | None = None
+    requires_password_change: bool = False
 
 
 class LoginRequest(BaseModel):

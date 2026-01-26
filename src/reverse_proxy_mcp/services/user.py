@@ -68,7 +68,7 @@ class UserService:
 
     @staticmethod
     def change_password(db: Session, user_id: int, old_password: str, new_password: str) -> bool:
-        """Change user password."""
+        """Change user password with validation of old password."""
         user = UserService.get_user_by_id(db, user_id)
         if not user:
             return False
@@ -77,6 +77,22 @@ class UserService:
             return False
 
         user.password_hash = hash_password(new_password)
+        user.must_change_password = False  # Clear password change requirement
+        db.commit()
+        return True
+
+    @staticmethod
+    def force_password_change(db: Session, user_id: int, new_password: str) -> bool:
+        """Force password change without validating old password.
+
+        Used when must_change_password is True (e.g., initial admin login).
+        """
+        user = UserService.get_user_by_id(db, user_id)
+        if not user:
+            return False
+
+        user.password_hash = hash_password(new_password)
+        user.must_change_password = False  # Clear password change requirement
         db.commit()
         return True
 

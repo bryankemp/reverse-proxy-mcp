@@ -12,9 +12,7 @@ class AppDrawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
-            ),
+            decoration: BoxDecoration(color: Theme.of(context).primaryColor),
             child: Consumer<AuthProvider>(
               builder: (context, auth, _) {
                 return Column(

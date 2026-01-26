@@ -41,7 +41,9 @@ class StorageService {
         await _secureStorage!.write(key: 'auth_token', value: token);
         return;
       }
-    } catch (_) {/* ignore and fallback */}
+    } catch (_) {
+      /* ignore and fallback */
+    }
     await _prefs.setString('auth_token', token);
   }
 
@@ -51,7 +53,9 @@ class StorageService {
         final v = await _secureStorage!.read(key: 'auth_token');
         if (v != null && v.isNotEmpty) return v;
       }
-    } catch (_) {/* ignore and fallback */}
+    } catch (_) {
+      /* ignore and fallback */
+    }
     return _prefs.getString('auth_token');
   }
 
@@ -60,7 +64,9 @@ class StorageService {
       if (_secureStorage != null) {
         await _secureStorage!.delete(key: 'auth_token');
       }
-    } catch (_) {/* ignore */}
+    } catch (_) {
+      /* ignore */
+    }
     await _prefs.remove('auth_token');
   }
 
@@ -92,7 +98,9 @@ class StorageService {
       if (_secureStorage != null) {
         await _secureStorage!.deleteAll();
       }
-    } catch (_) {/* ignore */}
+    } catch (_) {
+      /* ignore */
+    }
     await _prefs.clear();
   }
 }

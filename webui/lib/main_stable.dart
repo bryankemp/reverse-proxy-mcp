@@ -32,18 +32,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(apiService, storage),
         ),
-        ChangeNotifierProvider(
-          create: (_) => BackendProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RuleProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => CertificateProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MetricsProvider(apiService),
-        ),
+        ChangeNotifierProvider(create: (_) => BackendProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => RuleProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => CertificateProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => MetricsProvider(apiService)),
       ],
       child: MaterialApp(
         title: AppConfig.appName,
@@ -133,7 +125,10 @@ class AdminDashboard extends StatelessWidget {
                   context.read<AuthProvider>().logout();
                   Navigator.of(context).pushReplacementNamed('/');
                 },
-                child: const Text('Logout', style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -186,7 +181,9 @@ class AdminDashboard extends StatelessWidget {
                     title: 'SSL Certificates',
                     icon: Icons.security,
                     onTap: () async {
-                      await context.read<CertificateProvider>().fetchCertificates();
+                      await context
+                          .read<CertificateProvider>()
+                          .fetchCertificates();
                       if (context.mounted) {
                         showDialog(
                           context: context,

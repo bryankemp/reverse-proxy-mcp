@@ -27,16 +27,18 @@ db = SessionLocal()
 admin = db.query(User).filter(User.email == '$ADMIN_EMAIL').first()
 if not admin:
     print('Creating admin user...')
+    is_default_password = '$ADMIN_PASSWORD' == 'password'
     user = User(
         email='$ADMIN_EMAIL',
         username='admin',
         password_hash=hash_password('$ADMIN_PASSWORD'),
         role='admin',
-        is_active=True
+        is_active=True,
+        must_change_password=is_default_password
     )
     db.add(user)
     db.commit()
-    print('Admin user created')
+    print(f'Admin user created (must_change_password={is_default_password})')
 else:
     print('Admin user exists')
 db.close()

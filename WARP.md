@@ -33,9 +33,13 @@ API Layer:
 
 MCP Layer:
 - FastMCP server (port 5000)
-  - 21 tools for proxy management
-  - Tool categories: Backend management, Proxy rules, Certificates, Users, Monitoring
-  - Exposed via HTTP/SSE transport
+  - 22 tools for proxy management (includes set_default_certificate)
+  - 9 resources for read-only configuration access (proxy:// URI scheme)
+  - 5 prompts for guided workflows
+  - Tool categories: Backend management (5), Proxy rules (6), Certificates (5), Users & Config (4), Monitoring (2)
+  - Exposed via HTTP streamable transport
+  - Server capabilities: tools, resources (listChanged=true), prompts
+  - See "MCP Server Details" section below for complete reference
 
 Proxy Layer:
 - Nginx (ports 80/443) - Dynamically configured from database
@@ -197,8 +201,13 @@ reverse-proxy-mcp/
 │   │   └── metrics.py            # Metrics collection and aggregation
 │   ├── mcp/
 │   │   ├── __init__.py
-│   │   ├── server.py             # FastMCP server setup
-│   │   └── tools.py              # 21 MCP tool definitions
+│   │   ├── server.py             # FastMCP server initialization
+│   │   ├── tools.py              # 22 MCP tool definitions (decorators)
+│   │   ├── resources.py          # 9 MCP resources (proxy:// URIs)
+│   │   ├── prompts.py            # 5 MCP prompts (workflows)
+│   │   ├── client.py             # MCPAPIClient wrapper
+│   │   ├── handlers.py           # Legacy tool handlers (deprecated)
+│   │   └── __main__.py           # MCP server entry point
 │   └── migrations/               # Alembic (future: database versioning)
 ├── webui/                        # Flutter web project (minimal stub)
 ├── tests/
@@ -315,6 +324,245 @@ except Exception as e:
 - Populated by parsing Nginx access logs every 5 minutes
 - `backend_id`: NULL for aggregate metrics, FK for per-backend
 - 30-day rolling retention (oldest entries auto-deleted)
+
+## MCP Server Details
+
+### Overview
+
+The MCP server implements the Anthropic Model Context Protocol specification using the FastMCP framework. It provides 22 tools, 9 resources, and 5 prompts for AI/LLM integration.
+
+### Architecture
+
+**Entry Point**: `src/reverse_proxy_mcp/mcp/__main__.py`
+- Imports FastMCP server instance from `server.py`
+- Runs with `mcp.run(transport="streamable-http", port=5000)`
+- Exposes endpoint at `http://localhost:5000/mcp`
+
+**Server Setup**: `src/reverse_proxy_mcp/mcp/server.py`
+- Initializes FastMCP with name="reverse-proxy-mcp", version="1.0.0"
+- Calls `register_tools(mcp)`, `register_resources(mcp)`, `register_prompts(mcp)`
+- Declares server capabilities
+
+**Components**:
+- `tools.py` - 22 tools using `@mcp.tool()` decorators
+- `resources.py` - 9 resources using `@mcp.resource(uri)` decorators
+- `prompts.py` - 5 prompts using `@mcp.prompt()` decorators
+- `client.py` - MCPAPIClient wrapper for REST API calls
+
+### Tools (22 total)
+
+All tools call the REST API via MCPAPIClient. Tools are organized by category:
+
+**Backend Management (5)**:
+1. `list_backends(limit=50, offset=0)` - GET /backends
+2. `create_backend(name, host, port, protocol="http", description="")` - POST /backends
+3. `update_backend(backend_id, name?, host?, port?, protocol?, description?)` - PUT /backends/{id}
+4. `delete_backend(backend_id)` - DELETE /backends/{id}
+5. `get_backend(backend_id)` - GET /backends/{id}
+
+**Proxy Rule Management (6)**:
+1. `list_proxy_rules(limit=50, offset=0)` - GET /proxy-rules
+2. `create_proxy_rule(domain, backend_id, path_pattern="/", certificate_id?, rule_type="reverse_proxy")` - POST /proxy-rules
+3. `update_proxy_rule(rule_id, domain?, backend_id?, path_pattern?, certificate_id?, rule_type?)` - PUT /proxy-rules/{id}
+4. `delete_proxy_rule(rule_id)` - DELETE /proxy-rules/{id}
+5. `get_proxy_rule(rule_id)` - GET /proxy-rules/{id}
+6. `reload_nginx()` - POST /config/reload
+
+**Certificate Management (5)**:
+1. `list_certificates(limit=50, offset=0)` - GET /certificates
+2. `create_certificate(name, domain, cert_pem, key_pem, is_default=false, description="")` - POST /certificates (multipart)
+3. `get_certificate(cert_id)` - GET /certificates/{id}
+4. `set_default_certificate(cert_id)` - PUT /certificates/{id}/set-default
+5. `delete_certificate(cert_id)` - DELETE /certificates/{id}
+
+**User & Configuration (4)**:
+1. `list_users(limit=50, offset=0)` - GET /users
+2. `create_user(username, password, role="user", full_name="")` - POST /users
+3. `get_config()` - GET /config
+4. `update_config(max_connections?, timeout_seconds?)` - PUT /config
+
+**Monitoring (2)**:
+1. `get_health()` - GET /health
+2. `get_metrics(metric_type="requests", limit=100)` - GET /metrics
+
+### Resources (9 total)
+
+Resources provide read-only configuration access via `proxy://` URI scheme:
+
+1. `proxy://backends` - List all backends (JSON array)
+2. `proxy://backends/{backend_id}` - Single backend details
+3. `proxy://rules` - List all proxy rules with relationships
+4. `proxy://rules/{rule_id}` - Single rule with backend/certificate info
+5. `proxy://certificates` - List all certificates with name, domain, is_default, expires_at
+6. `proxy://certificates/{cert_id}` - Certificate details (no private key)
+7. `proxy://config` - Current Nginx configuration from database
+8. `proxy://metrics` - Aggregate metrics summary
+9. `proxy://audit-logs` - Recent audit log entries (admin only)
+
+All resources return `text/plain` with JSON-formatted content.
+
+### Prompts (5 total)
+
+Prompts provide guided workflows with contextual instructions:
+
+1. `setup_new_domain(domain: str, backend_host: str, backend_port: int)`
+   - Generates complete setup instructions
+   - Checks for existing backends to avoid duplicates
+   - Includes SSL configuration steps
+   - Provides verification and testing commands
+
+2. `troubleshoot_proxy(domain: str)`
+   - Fetches current configuration for domain
+   - Identifies missing/inactive rules or backends
+   - Provides diagnostic steps for common issues (502, 404, SSL errors, timeouts)
+   - Lists relevant tools for investigation
+
+3. `configure_ssl(domain: str, is_wildcard: bool = false)`
+   - Guides through certificate generation (Let's Encrypt, self-signed, commercial)
+   - Provides upload instructions with correct parameters
+   - Explains certificate assignment to proxy rules
+   - Includes verification steps and security best practices
+
+4. `rotate_certificate(cert_id: int)`
+   - Fetches existing certificate details
+   - Guides through zero-downtime certificate rotation
+   - Lists all proxy rules using the certificate
+   - Provides verification and cleanup steps
+
+5. `create_user_account(username: str, role: str = "user")`
+   - Guides secure password generation
+   - Explains role permissions (admin vs user)
+   - Provides security best practices
+   - Includes verification steps
+
+6. `configure_wildcard_domain(base_domain: str, subdomains: list[str])`
+   - Guides wildcard certificate setup
+   - Creates backends and rules for multiple subdomains
+   - Explains wildcard benefits and limitations
+   - Provides DNS configuration steps
+
+### Testing MCP Server
+
+```bash
+# Run MCP server locally
+uv run python -m reverse_proxy_mcp.mcp
+
+# In another terminal, test with MCP client
+# Install MCP inspector (for debugging)
+pip install mcp-inspector
+mcp-inspector http://localhost:5000/mcp
+
+# Test tool execution
+curl -X POST http://localhost:5000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "id": 1
+  }'
+
+# Test resource fetching
+curl -X POST http://localhost:5000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "resources/list",
+    "id": 2
+  }'
+```
+
+### MCP Development Notes
+
+**Tool Implementation Pattern**:
+```python
+@mcp.tool()
+def example_tool(param1: str, param2: int = 0) -> dict[str, Any]:
+    """Tool description for AI.
+    
+    Args:
+        param1: Description of param1
+        param2: Description of param2 (optional)
+    
+    Returns:
+        Result dictionary with status and data/message
+    """
+    try:
+        client = get_client()
+        result = client.get("/api/endpoint")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Failed: {e}")
+        return {"status": "error", "message": str(e)}
+```
+
+**Resource Implementation Pattern**:
+```python
+@mcp.resource("proxy://resource-name")
+def resource_name() -> str:
+    """Resource description.
+    
+    Returns:
+        JSON-formatted string
+    """
+    try:
+        client = get_client()
+        result = client.get("/api/endpoint")
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+```
+
+**Prompt Implementation Pattern**:
+```python
+@mcp.prompt()
+def workflow_name(arg1: str, arg2: int) -> str:
+    """Prompt description.
+    
+    Args:
+        arg1: Description
+        arg2: Description
+    
+    Returns:
+        Markdown-formatted workflow instructions
+    """
+    # Optionally fetch current state
+    client = get_client()
+    data = client.get("/api/endpoint")
+    
+    # Generate contextual instructions
+    return f"""# Workflow Title
+    
+## Step 1: ...
+Tool: tool_name
+Parameters:
+- param: value
+
+## Step 2: ...
+...
+"""
+```
+
+### Server Capabilities
+
+The FastMCP server declares the following capabilities:
+- **tools**: listChanged=false (static tool list)
+- **resources**: listChanged=true (resources can change based on database state)
+- **prompts**: listChanged=false (static prompt list)
+
+### Authentication for MCP
+
+MCP tools require authentication to call the REST API. Set the admin JWT token:
+
+```python
+from reverse_proxy_mcp.mcp.client import set_client_token
+
+# Obtain admin token from login endpoint
+set_client_token("eyJ0eXAiOiJKV1QiLCJhbGciOi...")
+
+# All subsequent MCP tool calls will use this token
+```
+
+For AI assistants, configure the MCP client to include the token in requests.
 
 ## Git Workflow
 
@@ -488,10 +736,13 @@ def admin_token(admin_user):
 - Monitoring endpoints
 - Health checks
 
-### Phase 4: MCP Server
-- Tool definitions (21 tools)
-- API client wrapper
-- Tool implementations
+### Phase 4: MCP Server ✅ (COMPLETED)
+- Tool definitions (22 tools with FastMCP decorators) ✅
+- Resources (9 URI-based resources) ✅
+- Prompts (5 guided workflows) ✅
+- API client wrapper ✅
+- HTTP streamable transport ✅
+- Server capabilities declaration ✅
 
 ### Phase 5: Flutter WebUI
 - Login/authentication

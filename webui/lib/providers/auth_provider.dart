@@ -13,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _isLoggedIn = false;
+  bool _requiresPasswordChange = false;
 
   // Getters
   User? get currentUser => _currentUser;
@@ -21,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isLoggedIn => _isLoggedIn;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
+  bool get requiresPasswordChange => _requiresPasswordChange;
 
   AuthProvider(this._apiService, this._storage);
 
@@ -93,6 +95,10 @@ class AuthProvider extends ChangeNotifier {
         _currentUser = User.fromJson(userData);
       }
 
+      // Check if password change is required
+      _requiresPasswordChange =
+          response['requires_password_change'] as bool? ?? false;
+
       _isLoggedIn = true;
       notifyListeners();
       return true;
@@ -123,6 +129,7 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _currentUser = null;
     _isLoggedIn = false;
+    _requiresPasswordChange = false;
 
     // Clear storage
     await _storage.deleteToken();

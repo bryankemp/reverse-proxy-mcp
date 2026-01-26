@@ -178,11 +178,6 @@ class TestUserManagement:
                 "old_password": "user123456",
                 "new_password": "newpass123456",
             },
-            params={
-                "user_id": regular_user.id,
-                "old_password": "user123456",
-                "new_password": "newpass123456",
-            },
             headers=user_auth_headers,
         )
         assert response.status_code == status.HTTP_200_OK
@@ -191,8 +186,7 @@ class TestUserManagement:
         """Test changing password with wrong old password."""
         response = client.post(
             f"/api/v1/users/{regular_user.id}/change-password",
-            params={
-                "user_id": regular_user.id,
+            json={
                 "old_password": "wrongpass",
                 "new_password": "newpass123456",
             },

@@ -31,6 +31,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
                 password_hash=hash_password("password"),
                 role="admin",
                 is_active=True,
+                must_change_password=True,  # Force password change on first login
             )
             db.add(user)
             db.commit()
@@ -41,6 +42,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             "access_token": access_token,
             "token_type": "bearer",
             "expires_in": get_token_expiry_time(),
+            "requires_password_change": user.must_change_password,
             "user": {
                 "id": user.id,
                 "username": user.username,
@@ -48,6 +50,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
                 "role": user.role,
                 "full_name": "",
                 "is_active": user.is_active,
+                "must_change_password": user.must_change_password,
                 "created_at": user.created_at.isoformat(),
                 "updated_at": user.updated_at.isoformat(),
             },
@@ -74,7 +77,11 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
-    return TokenResponse(access_token=access_token, expires_in=get_token_expiry_time())
+    return TokenResponse(
+        access_token=access_token,
+        expires_in=get_token_expiry_time(),
+        requires_password_change=user.must_change_password,
+    )
 
 
 @router.get("/user", response_model=UserResponse)

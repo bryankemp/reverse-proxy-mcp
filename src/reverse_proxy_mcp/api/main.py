@@ -9,7 +9,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from reverse_proxy_mcp.api.middleware import ErrorHandlingMiddleware, LoggingMiddleware
-from reverse_proxy_mcp.api.v1 import auth, backends, certificates, config, proxy_rules, users
+from reverse_proxy_mcp.api.v1 import (
+    auth,
+    backends,
+    certificates,
+    config,
+    monitoring,
+    proxy_rules,
+    users,
+)
+from reverse_proxy_mcp.api.v2 import matrix
 from reverse_proxy_mcp.core import create_all_tables, settings
 from reverse_proxy_mcp.core.database import SessionLocal
 from reverse_proxy_mcp.core.logging import get_logger, setup_logging
@@ -94,12 +103,17 @@ def create_app() -> FastAPI:
     )
 
     # Include API routers
+    # v1 endpoints (hierarchical)
     app.include_router(auth.router, prefix=f"{settings.api_prefix}/v1")
     app.include_router(backends.router, prefix=f"{settings.api_prefix}/v1")
     app.include_router(proxy_rules.router, prefix=f"{settings.api_prefix}/v1")
     app.include_router(users.router, prefix=f"{settings.api_prefix}/v1")
     app.include_router(certificates.router, prefix=f"{settings.api_prefix}/v1")
     app.include_router(config.router, prefix=f"{settings.api_prefix}/v1")
+    app.include_router(monitoring.router, prefix=f"{settings.api_prefix}/v1")
+
+    # v2 endpoints (matrix URIs)
+    app.include_router(matrix.router)
 
     # Setup static files for Flutter web UI (works in container and local dev)
     web_ui_path = _find_webui_path()
@@ -147,12 +161,6 @@ def create_app() -> FastAPI:
         async def version_json() -> FileResponse:
             return FileResponse(web_ui_path / "version.json")
 
-        # Health check
-        @app.get("/health")
-        async def health_check() -> dict:
-            """Health check endpoint."""
-            return {"status": "ok", "version": settings.app_version}
-
         # SPA fallback: catch-all that serves index.html for unknown routes
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str) -> FileResponse:
@@ -165,12 +173,6 @@ def create_app() -> FastAPI:
 
         logger.info(f"Serving web UI from {web_ui_path}")
     else:
-        # Fallback: health check only if no web UI
-        @app.get("/health")
-        async def health_check() -> dict:
-            """Health check endpoint."""
-            return {"status": "ok", "version": settings.app_version}
-
         logger.warning("Web UI not found; looked in ENV WEBUI_DIR and common paths")
 
     logger.info(f"{settings.app_name} v{settings.app_version} initialized")

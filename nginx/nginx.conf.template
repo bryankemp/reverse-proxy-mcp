@@ -1,0 +1,88 @@
+# Auto-generated Nginx proxy configuration
+# Generated at {{ timestamp }}
+# DO NOT EDIT MANUALLY
+
+# Backend upstream definitions
+{% for backend in backends %}
+upstream backend_{{ backend.id }} {
+    server {{ backend.ip }}:{{ backend.port }};
+}
+{% endfor %}
+
+{% if enable_default_ssl_server and default_ssl_cert_path and default_ssl_key_path %}
+# Default SSL server (catches unknown/unmapped domains)
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    ssl_certificate {{ default_ssl_cert_path }};
+    ssl_certificate_key {{ default_ssl_key_path }};
+    return 444;  # Close connection without response
+}
+{% endif %}
+
+{% for rule in proxy_rules %}
+{% if rule.force_https and rule.ssl_enabled %}
+# HTTP to HTTPS redirect for {{ rule.frontend_domain }}
+server {
+    listen 80;
+    server_name {{ rule.frontend_domain }};
+    return 301 https://$host$request_uri;
+}
+{% endif %}
+
+# Proxy rule: {{ rule.frontend_domain }} -> backend_{{ rule.backend_id }}
+server {
+    {% if rule.ssl_enabled %}
+    listen 443 ssl;
+    server_name {{ rule.frontend_domain }};
+
+    # SSL certificate
+    {% if rule.cert_path and rule.key_path %}
+    ssl_certificate {{ rule.cert_path }};
+    ssl_certificate_key {{ rule.key_path }};
+    {% elif default_ssl_cert_path and default_ssl_key_path %}
+    ssl_certificate {{ default_ssl_cert_path }};
+    ssl_certificate_key {{ default_ssl_key_path }};
+    {% endif %}
+    {% else %}
+    listen 80;
+    server_name {{ rule.frontend_domain }};
+    {% endif %}
+
+    {% if rule.ip_list %}
+    # IP Whitelist
+    {% for ip in rule.ip_list %}
+    allow {{ ip }};
+    {% endfor %}
+    deny all;
+    {% endif %}
+
+    {% if rule.enable_hsts and rule.ssl_enabled %}
+    # HSTS Header
+    add_header Strict-Transport-Security "max-age={{ rule.hsts_max_age }}; includeSubDomains";
+    {% endif %}
+
+    {% if rule.custom_headers %}
+    # Custom Headers
+    {% for key, value in rule.custom_headers_dict.items() %}
+    add_header {{ key }} "{{ value }}" always;
+    {% endfor %}
+    {% endif %}
+
+    location / {
+        {% if rule.rate_limit %}
+        # Rate Limiting
+        limit_req zone=general burst=20 nodelay;
+        {% endif %}
+
+        # Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Proxy to backend
+        proxy_pass {{ rule.backend_protocol }}://backend_{{ rule.backend_id }};
+    }
+}
+{% endfor %}

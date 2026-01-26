@@ -190,10 +190,12 @@ def test_certificate_assignment_workflow(client, admin_token, db):
 @pytest.mark.integration
 def test_health_endpoint(client):
     """Test health check endpoint."""
-    response = client.get("/health")
+    response = client.get("/api/v1/monitoring/health")
     assert response.status_code == 200
     health = response.json()
-    assert "status" in health or "db" in health
+    assert "status" in health
+    assert "database" in health
+    assert "nginx" in health
 
 
 @pytest.mark.integration

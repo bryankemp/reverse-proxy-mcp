@@ -71,16 +71,17 @@ class _RulesScreenState extends State<RulesScreen> {
           ElevatedButton(
             onPressed: () async {
               final backendIdText = _backendIdController.text.trim();
-              if (_domainController.text.trim().isEmpty || backendIdText.isEmpty) {
+              if (_domainController.text.trim().isEmpty ||
+                  backendIdText.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please fill in all fields')),
                 );
                 return;
               }
               await context.read<RuleProvider>().createRule(
-                    domain: _domainController.text.trim(),
-                    backendId: int.parse(backendIdText),
-                  );
+                domain: _domainController.text.trim(),
+                backendId: int.parse(backendIdText),
+              );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Add'),
@@ -123,17 +124,18 @@ class _RulesScreenState extends State<RulesScreen> {
           ElevatedButton(
             onPressed: () async {
               final backendIdText = _backendIdController.text.trim();
-              if (_domainController.text.trim().isEmpty || backendIdText.isEmpty) {
+              if (_domainController.text.trim().isEmpty ||
+                  backendIdText.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please fill in all fields')),
                 );
                 return;
               }
               await context.read<RuleProvider>().updateRule(
-                    id: rule.id,
-                    domain: _domainController.text.trim(),
-                    backendId: int.parse(backendIdText),
-                  );
+                id: rule.id,
+                domain: _domainController.text.trim(),
+                backendId: int.parse(backendIdText),
+              );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Update'),

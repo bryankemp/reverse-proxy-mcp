@@ -103,7 +103,7 @@ class BackendProvider extends ChangeNotifier {
 
       // Get existing backend to preserve fields not being updated
       final existing = _backends.firstWhere((b) => b.id == id);
-      
+
       final backend = BackendServer(
         id: id,
         name: name,
@@ -118,7 +118,7 @@ class BackendProvider extends ChangeNotifier {
       );
 
       final updated = await _apiService.updateBackend(id, backend);
-      
+
       final index = _backends.indexWhere((b) => b.id == id);
       if (index >= 0) {
         _backends[index] = updated;

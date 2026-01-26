@@ -74,8 +74,16 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> U
     return user
 
 
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
+def require_admin(current_user: User = Depends(get_current_user), request: Request = None) -> User:
     """Dependency to require admin role."""
+    # Check if password change is required (except for password change endpoint)
+    if request and not request.url.path.endswith("/change-password"):
+        if current_user.must_change_password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password change required before accessing other endpoints",
+            )
+
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -84,6 +92,13 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-def require_user(current_user: User = Depends(get_current_user)) -> User:
+def require_user(current_user: User = Depends(get_current_user), request: Request = None) -> User:
     """Dependency to require authenticated user (any role)."""
+    # Check if password change is required (except for password change endpoint)
+    if request and not request.url.path.endswith("/change-password"):
+        if current_user.must_change_password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password change required before accessing other endpoints",
+            )
     return current_user

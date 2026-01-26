@@ -96,11 +96,11 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
           ElevatedButton(
             onPressed: () async {
               await context.read<CertificateProvider>().createCertificate(
-                    name: _nameController.text,
-                    domain: _domainController.text,
-                    certificate: _certController.text,
-                    privateKey: _keyController.text,
-                  );
+                name: _nameController.text,
+                domain: _domainController.text,
+                certificate: _certController.text,
+                privateKey: _keyController.text,
+              );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Add'),
@@ -126,10 +126,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SSL Certificates'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('SSL Certificates'), elevation: 0),
       drawer: const AppDrawer(),
       body: Consumer<CertificateProvider>(
         builder: (context, provider, _) {
@@ -183,15 +180,36 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
             itemBuilder: (context, index) {
               final cert = provider.certificates[index];
               final expiryStatus = _getExpiryStatus(cert.expiryDate);
-              final isExpiring = cert.expiryDate.difference(DateTime.now()).inDays < 30;
+              final isExpiring =
+                  cert.expiryDate.difference(DateTime.now()).inDays < 30;
 
               return Card(
                 child: ListTile(
-                  title: Text(cert.domain),
+                  leading: cert.isDefault
+                      ? const Icon(Icons.star, color: Colors.amber)
+                      : const Icon(Icons.security, color: Colors.blue),
+                  title: Row(
+                    children: [
+                      Text(cert.name),
+                      if (cert.isDefault) ...[
+                        const SizedBox(width: 8),
+                        const Chip(
+                          label: Text(
+                            'DEFAULT',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                          backgroundColor: Colors.amber,
+                          padding: EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                      ],
+                    ],
+                  ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Description: ${cert.description}'),
+                      Text('Domain: ${cert.domain}'),
+                      if (cert.description.isNotEmpty)
+                        Text('Description: ${cert.description}'),
                       Text(
                         expiryStatus,
                         style: TextStyle(
@@ -202,10 +220,29 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                   ),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
+                      if (!cert.isDefault)
+                        PopupMenuItem(
+                          child: const Text('Set as Default'),
+                          onTap: () async {
+                            final success = await provider
+                                .setDefaultCertificate(cert.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    success
+                                        ? 'Certificate set as default'
+                                        : provider.error ??
+                                              'Failed to set default',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                       PopupMenuItem(
                         child: const Text('Delete'),
-                        onTap: () =>
-                            provider.deleteCertificate(cert.id),
+                        onTap: () => provider.deleteCertificate(cert.id),
                       ),
                     ],
                   ),

@@ -73,9 +73,14 @@ def mock_nginx_generator(test_nginx_dir, monkeypatch):
         """Mock nginx reload - always succeeds in tests."""
         return True, "Nginx reloaded (mocked)"
 
+    def mock_apply_config(self, db) -> tuple[bool, str]:
+        """Mock apply_config - always succeeds in tests."""
+        return True, "Configuration applied and Nginx reloaded (mocked)"
+
     monkeypatch.setattr(NginxConfigGenerator, "__init__", mock_init)
     monkeypatch.setattr(NginxConfigGenerator, "validate_config", mock_validate_config)
     monkeypatch.setattr(NginxConfigGenerator, "reload_nginx", mock_reload_nginx)
+    monkeypatch.setattr(NginxConfigGenerator, "apply_config", mock_apply_config)
 
 
 @pytest.fixture
@@ -101,6 +106,7 @@ def admin_user(db):
         password_hash=hash_password("admin123456"),
         role="admin",
         is_active=True,
+        must_change_password=False,
     )
     db.add(user)
     db.commit()
@@ -117,6 +123,7 @@ def regular_user(db):
         password_hash=hash_password("user123456"),
         role="user",
         is_active=True,
+        must_change_password=False,
     )
     db.add(user)
     db.commit()

@@ -47,18 +47,10 @@ class MyApp extends StatelessWidget {
         ),
 
         // Data providers
-        ChangeNotifierProvider(
-          create: (_) => BackendProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RuleProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => CertificateProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MetricsProvider(apiService),
-        ),
+        ChangeNotifierProvider(create: (_) => BackendProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => RuleProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => CertificateProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => MetricsProvider(apiService)),
       ],
       child: MaterialApp(
         title: AppConfig.appName,
@@ -131,9 +123,7 @@ class _AppRouterState extends State<AppRouter> {
         // Show loading while initializing
         if (authProvider.isLoading) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 

@@ -74,9 +74,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.error ?? 'Login failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(auth.error ?? 'Login failed')));
     }
   }
 
@@ -94,11 +94,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.admin_panel_settings, size: 64, color: Colors.blue),
+                    const Icon(
+                      Icons.admin_panel_settings,
+                      size: 64,
+                      color: Colors.blue,
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       'Reverse Proxy MCP',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -125,8 +132,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -140,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Checkbox(
                           value: _rememberMe,
-                          onChanged: !authProvider.isLoading 
+                          onChanged: !authProvider.isLoading
                               ? (v) => setState(() => _rememberMe = v ?? false)
                               : null,
                         ),
@@ -153,14 +166,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       child: ElevatedButton.icon(
                         onPressed: authProvider.isLoading ? null : _handleLogin,
-                        icon: authProvider.isLoading 
+                        icon: authProvider.isLoading
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.login),
-                        label: Text(authProvider.isLoading ? 'Logging in...' : 'Login'),
+                        label: Text(
+                          authProvider.isLoading ? 'Logging in...' : 'Login',
+                        ),
                       ),
                     ),
                     if (authProvider.error != null) ...[

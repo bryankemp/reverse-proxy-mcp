@@ -12,10 +12,7 @@ class _AuditScreenState extends State<AuditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Audit Logs'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Audit Logs'), elevation: 0),
       drawer: const AppDrawer(),
       body: Center(
         child: Column(

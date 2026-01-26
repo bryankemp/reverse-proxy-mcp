@@ -9,6 +9,7 @@ import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'widgets/password_change_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,18 +33,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(apiService, storage),
         ),
-        ChangeNotifierProvider(
-          create: (_) => BackendProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RuleProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => CertificateProvider(apiService),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MetricsProvider(apiService),
-        ),
+        ChangeNotifierProvider(create: (_) => BackendProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => RuleProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => CertificateProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => MetricsProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => UserProvider(apiService)),
       ],
       child: MaterialApp(
         title: AppConfig.appName,
@@ -109,6 +103,21 @@ class _AppRouterState extends State<AppRouter> {
         if (!authProvider.isLoggedIn) {
           return const LoginScreen();
         }
+
+        // Show password change dialog if required
+        if (authProvider.requiresPasswordChange) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => PasswordChangeDialog(
+                isRequired: true,
+                username: authProvider.currentUser?.username,
+              ),
+            );
+          });
+        }
+
         return const AdminDashboard();
       },
     );
@@ -120,13 +129,13 @@ Future<void> _showNginxConfig(BuildContext context) async {
   try {
     final apiService = Provider.of<ApiService>(context, listen: false);
     final config = await apiService.getNginxConfig();
-    
+
     if (!context.mounted) return;
-    
+
     final displayConfig = config.isEmpty || config.trim().isEmpty
         ? '# No proxy rules configured yet\n# Create a backend and proxy rule to see the generated configuration'
         : config;
-    
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -154,7 +163,10 @@ Future<void> _showNginxConfig(BuildContext context) async {
                 child: SingleChildScrollView(
                   child: SelectableText(
                     displayConfig,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ),
@@ -165,9 +177,9 @@ Future<void> _showNginxConfig(BuildContext context) async {
     );
   } catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to load config: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Failed to load config: $e')));
   }
 }
 
@@ -197,7 +209,10 @@ class AdminDashboard extends StatelessWidget {
                         context.read<AuthProvider>().logout();
                         Navigator.of(context).pushReplacementNamed('/');
                       },
-                      child: const Text('Logout', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -219,7 +234,10 @@ class AdminDashboard extends StatelessWidget {
                   children: [
                     const Text(
                       'Reverse Proxy MCP Admin',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     Wrap(
@@ -234,11 +252,14 @@ class AdminDashboard extends StatelessWidget {
                             title: 'Backend Servers',
                             icon: Icons.storage,
                             onTap: () async {
-                              await context.read<BackendProvider>().fetchBackends();
+                              await context
+                                  .read<BackendProvider>()
+                                  .fetchBackends();
                               if (context.mounted) {
                                 showDialog(
                                   context: context,
-                                  builder: (context) => const BackendListDialog(),
+                                  builder: (context) =>
+                                      const BackendListDialog(),
                                 );
                               }
                             },
@@ -272,11 +293,14 @@ class AdminDashboard extends StatelessWidget {
                             title: 'SSL Certificates',
                             icon: Icons.security,
                             onTap: () async {
-                              await context.read<CertificateProvider>().fetchCertificates();
+                              await context
+                                  .read<CertificateProvider>()
+                                  .fetchCertificates();
                               if (context.mounted) {
                                 showDialog(
                                   context: context,
-                                  builder: (context) => const CertificateListDialog(),
+                                  builder: (context) =>
+                                      const CertificateListDialog(),
                                 );
                               }
                             },
@@ -334,7 +358,7 @@ class AdminCard extends StatelessWidget {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ];
-    
+
     if (actionButton != null) {
       children.add(const SizedBox(height: 16));
       children.add(
@@ -348,7 +372,7 @@ class AdminCard extends StatelessWidget {
         ),
       );
     }
-    
+
     return Card(
       elevation: 4,
       child: InkWell(
@@ -390,9 +414,7 @@ class BackendListDialog extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -415,11 +437,21 @@ class BackendListDialog extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+                  TextField(
+                    controller: nameCtl,
+                    decoration: const InputDecoration(labelText: 'Name'),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: hostCtl, decoration: const InputDecoration(labelText: 'Host/IP')),
+                  TextField(
+                    controller: hostCtl,
+                    decoration: const InputDecoration(labelText: 'Host/IP'),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: portCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Port')),
+                  TextField(
+                    controller: portCtl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Port'),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: protocol,
@@ -435,7 +467,10 @@ class BackendListDialog extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Update'),
@@ -450,7 +485,9 @@ class BackendListDialog extends StatelessWidget {
       final host = hostCtl.text.trim();
       final port = int.tryParse(portCtl.text.trim()) ?? 80;
       if (name.isEmpty || host.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and Host are required')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Name and Host are required')),
+        );
         return;
       }
       final provider = context.read<BackendProvider>();
@@ -463,9 +500,13 @@ class BackendListDialog extends StatelessWidget {
       );
       if (!context.mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backend updated')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Backend updated')));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Update failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.error ?? 'Update failed')),
+        );
       }
     }
   }
@@ -487,11 +528,21 @@ class BackendListDialog extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+                  TextField(
+                    controller: nameCtl,
+                    decoration: const InputDecoration(labelText: 'Name'),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: hostCtl, decoration: const InputDecoration(labelText: 'Host/IP')),
+                  TextField(
+                    controller: hostCtl,
+                    decoration: const InputDecoration(labelText: 'Host/IP'),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: portCtl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Port')),
+                  TextField(
+                    controller: portCtl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Port'),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: protocol,
@@ -507,7 +558,10 @@ class BackendListDialog extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Create'),
@@ -522,16 +576,27 @@ class BackendListDialog extends StatelessWidget {
       final host = hostCtl.text.trim();
       final port = int.tryParse(portCtl.text.trim()) ?? 80;
       if (name.isEmpty || host.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and Host are required')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Name and Host are required')),
+        );
         return;
       }
       final provider = context.read<BackendProvider>();
-      final ok = await provider.createBackend(name: name, host: host, port: port, protocol: protocol);
+      final ok = await provider.createBackend(
+        name: name,
+        host: host,
+        port: port,
+        protocol: protocol,
+      );
       if (!context.mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backend created')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Backend created')));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Create failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.error ?? 'Create failed')),
+        );
       }
     }
   }
@@ -575,7 +640,9 @@ class BackendListDialog extends StatelessWidget {
                       backend.name,
                       style: TextStyle(
                         color: backend.isActive ? null : Colors.grey[600],
-                        decoration: backend.isActive ? null : TextDecoration.lineThrough,
+                        decoration: backend.isActive
+                            ? null
+                            : TextDecoration.lineThrough,
                       ),
                     ),
                     subtitle: Text(
@@ -589,11 +656,16 @@ class BackendListDialog extends StatelessWidget {
                         PopupMenuItem(
                           child: const Text('Edit'),
                           onTap: () {
-                            Future.delayed(Duration.zero, () => _showEditBackendForm(context, backend));
+                            Future.delayed(
+                              Duration.zero,
+                              () => _showEditBackendForm(context, backend),
+                            );
                           },
                         ),
                         PopupMenuItem(
-                          child: Text(backend.isActive ? 'Deactivate' : 'Activate'),
+                          child: Text(
+                            backend.isActive ? 'Deactivate' : 'Activate',
+                          ),
                           onTap: () {
                             Future.delayed(Duration.zero, () async {
                               final ok = await provider.updateBackend(
@@ -606,7 +678,15 @@ class BackendListDialog extends StatelessWidget {
                               );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(ok ? (backend.isActive ? 'Backend deactivated' : 'Backend activated') : 'Update failed')),
+                                  SnackBar(
+                                    content: Text(
+                                      ok
+                                          ? (backend.isActive
+                                                ? 'Backend deactivated'
+                                                : 'Backend activated')
+                                          : 'Update failed',
+                                    ),
+                                  ),
                                 );
                               }
                             });
@@ -619,7 +699,9 @@ class BackendListDialog extends StatelessWidget {
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 title: const Text('Confirm Deletion'),
-                                content: Text('Delete "${backend.name}" permanently? This cannot be undone.'),
+                                content: Text(
+                                  'Delete "${backend.name}" permanently? This cannot be undone.',
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
@@ -627,17 +709,25 @@ class BackendListDialog extends StatelessWidget {
                                   ),
                                   ElevatedButton(
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                    ),
                                     child: const Text('Delete'),
                                   ),
                                 ],
                               ),
                             );
                             if (confirm == true) {
-                              final ok = await provider.deleteBackend(backend.id);
+                              final ok = await provider.deleteBackend(
+                                backend.id,
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(ok ? 'Backend deleted' : 'Delete failed')),
+                                  SnackBar(
+                                    content: Text(
+                                      ok ? 'Backend deleted' : 'Delete failed',
+                                    ),
+                                  ),
                                 );
                               }
                             }
@@ -655,11 +745,26 @@ class BackendListDialog extends StatelessWidget {
                             _buildDetailRow('Host/IP', backend.host),
                             _buildDetailRow('Port', backend.port.toString()),
                             _buildDetailRow('Protocol', backend.protocol),
-                            _buildDetailRow('Full URL', '${backend.protocol}://${backend.host}:${backend.port}'),
-                            _buildDetailRow('Status', backend.isActive ? 'Active' : 'Inactive'),
-                            _buildDetailRow('Created By', 'User ID: ${backend.createdBy}'),
-                            _buildDetailRow('Created At', backend.createdAt.toString()),
-                            _buildDetailRow('Updated At', backend.updatedAt.toString()),
+                            _buildDetailRow(
+                              'Full URL',
+                              '${backend.protocol}://${backend.host}:${backend.port}',
+                            ),
+                            _buildDetailRow(
+                              'Status',
+                              backend.isActive ? 'Active' : 'Inactive',
+                            ),
+                            _buildDetailRow(
+                              'Created By',
+                              'User ID: ${backend.createdBy}',
+                            ),
+                            _buildDetailRow(
+                              'Created At',
+                              backend.createdAt.toString(),
+                            ),
+                            _buildDetailRow(
+                              'Updated At',
+                              backend.updatedAt.toString(),
+                            ),
                           ],
                         ),
                       ),
@@ -691,9 +796,7 @@ class RuleListDialog extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -725,32 +828,51 @@ class RuleListDialog extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+                  TextField(
+                    controller: domainCtl,
+                    decoration: const InputDecoration(labelText: 'Domain'),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
                     value: selectedBackendId,
                     items: backends.map((backend) {
                       return DropdownMenuItem<int>(
                         value: backend.id,
-                        child: Text('${backend.name} (${backend.protocol}://${backend.host}:${backend.port})'),
+                        child: Text(
+                          '${backend.name} (${backend.protocol}://${backend.host}:${backend.port})',
+                        ),
                       );
                     }).toList(),
                     onChanged: (v) => setState(() => selectedBackendId = v),
-                    decoration: const InputDecoration(labelText: 'Backend Server'),
+                    decoration: const InputDecoration(
+                      labelText: 'Backend Server',
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(controller: pathCtl, decoration: const InputDecoration(labelText: 'Path Pattern')),
+                  TextField(
+                    controller: pathCtl,
+                    decoration: const InputDecoration(
+                      labelText: 'Path Pattern',
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: ruleType,
                     items: const [
-                      DropdownMenuItem(value: 'reverse_proxy', child: Text('reverse_proxy')),
+                      DropdownMenuItem(
+                        value: 'reverse_proxy',
+                        child: Text('reverse_proxy'),
+                      ),
                     ],
-                    onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
+                    onChanged: (v) =>
+                        setState(() => ruleType = v ?? 'reverse_proxy'),
                     decoration: const InputDecoration(labelText: 'Rule Type'),
                   ),
                   const Divider(height: 24),
-                  const Text('Security Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Security Settings',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   CheckboxListTile(
                     title: const Text('Enable SSL/HTTPS'),
                     value: sslEnabled,
@@ -794,8 +916,14 @@ class RuleListDialog extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Update')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Update'),
+          ),
         ],
       ),
     );
@@ -804,13 +932,15 @@ class RuleListDialog extends StatelessWidget {
       final domain = domainCtl.text.trim();
       final path = pathCtl.text.trim().isEmpty ? '/' : pathCtl.text.trim();
       if (domain.isEmpty || selectedBackendId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain and Backend are required')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Domain and Backend are required')),
+        );
         return;
       }
-      
+
       final rateLimitText = rateLimitCtl.text.trim();
       final ipWhitelistText = ipWhitelistCtl.text.trim();
-      
+
       final provider = context.read<RuleProvider>();
       final ok = await provider.updateRule(
         id: rule.id,
@@ -826,9 +956,13 @@ class RuleListDialog extends StatelessWidget {
       );
       if (!context.mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rule updated')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Rule updated')));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.error ?? 'Update failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.error ?? 'Update failed')),
+        );
       }
     }
   }
@@ -850,7 +984,11 @@ class RuleListDialog extends StatelessWidget {
 
     if (backends.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No active backends available. Please create a backend first.')),
+        const SnackBar(
+          content: Text(
+            'No active backends available. Please create a backend first.',
+          ),
+        ),
       );
       return;
     }
@@ -867,32 +1005,49 @@ class RuleListDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+                TextField(
+                  controller: domainCtl,
+                  decoration: const InputDecoration(labelText: 'Domain'),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
                   value: selectedBackendId,
                   items: backends.map((backend) {
                     return DropdownMenuItem<int>(
                       value: backend.id,
-                      child: Text('${backend.name} (${backend.protocol}://${backend.host}:${backend.port})'),
+                      child: Text(
+                        '${backend.name} (${backend.protocol}://${backend.host}:${backend.port})',
+                      ),
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => selectedBackendId = v),
-                  decoration: const InputDecoration(labelText: 'Backend Server'),
+                  decoration: const InputDecoration(
+                    labelText: 'Backend Server',
+                  ),
                 ),
                 const SizedBox(height: 8),
-                TextField(controller: pathCtl, decoration: const InputDecoration(labelText: 'Path Pattern')),
+                TextField(
+                  controller: pathCtl,
+                  decoration: const InputDecoration(labelText: 'Path Pattern'),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: ruleType,
                   items: const [
-                    DropdownMenuItem(value: 'reverse_proxy', child: Text('reverse_proxy')),
+                    DropdownMenuItem(
+                      value: 'reverse_proxy',
+                      child: Text('reverse_proxy'),
+                    ),
                   ],
-                  onChanged: (v) => setState(() => ruleType = v ?? 'reverse_proxy'),
+                  onChanged: (v) =>
+                      setState(() => ruleType = v ?? 'reverse_proxy'),
                   decoration: const InputDecoration(labelText: 'Rule Type'),
                 ),
                 const Divider(height: 24),
-                const Text('Security Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Security Settings',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 CheckboxListTile(
                   title: const Text('Enable SSL/HTTPS'),
                   value: sslEnabled,
@@ -935,8 +1090,14 @@ class RuleListDialog extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Create'),
+          ),
         ],
       ),
     );
@@ -945,14 +1106,16 @@ class RuleListDialog extends StatelessWidget {
       final domain = domainCtl.text.trim();
       final path = pathCtl.text.trim().isEmpty ? '/' : pathCtl.text.trim();
       if (domain.isEmpty || selectedBackendId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain and Backend are required')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Domain and Backend are required')),
+        );
         return;
       }
-      
+
       // Parse optional security fields
       final rateLimitText = rateLimitCtl.text.trim();
       final ipWhitelistText = ipWhitelistCtl.text.trim();
-      
+
       final ok = await context.read<RuleProvider>().createRule(
         domain: domain,
         backendId: selectedBackendId!,
@@ -965,7 +1128,9 @@ class RuleListDialog extends StatelessWidget {
         ipWhitelist: ipWhitelistText.isEmpty ? null : ipWhitelistText,
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Rule created' : 'Create failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Rule created' : 'Create failed')),
+      );
     }
   }
 
@@ -1003,7 +1168,7 @@ class RuleListDialog extends StatelessWidget {
                   orElse: () => backendProvider.backends.first, // Fallback
                 );
                 final backendName = backend.name;
-                
+
                 return Card(
                   color: rule.isActive ? null : Colors.grey[200],
                   child: ExpansionTile(
@@ -1015,7 +1180,9 @@ class RuleListDialog extends StatelessWidget {
                       rule.domain,
                       style: TextStyle(
                         color: rule.isActive ? null : Colors.grey[600],
-                        decoration: rule.isActive ? null : TextDecoration.lineThrough,
+                        decoration: rule.isActive
+                            ? null
+                            : TextDecoration.lineThrough,
                       ),
                     ),
                     subtitle: Text(
@@ -1029,11 +1196,16 @@ class RuleListDialog extends StatelessWidget {
                         PopupMenuItem(
                           child: const Text('Edit'),
                           onTap: () {
-                            Future.delayed(Duration.zero, () => _showEditRuleForm(context, rule));
+                            Future.delayed(
+                              Duration.zero,
+                              () => _showEditRuleForm(context, rule),
+                            );
                           },
                         ),
                         PopupMenuItem(
-                          child: Text(rule.isActive ? 'Deactivate' : 'Activate'),
+                          child: Text(
+                            rule.isActive ? 'Deactivate' : 'Activate',
+                          ),
                           onTap: () {
                             Future.delayed(Duration.zero, () async {
                               final ok = await ruleProvider.updateRule(
@@ -1046,7 +1218,15 @@ class RuleListDialog extends StatelessWidget {
                               );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(ok ? (rule.isActive ? 'Rule deactivated' : 'Rule activated') : 'Update failed')),
+                                  SnackBar(
+                                    content: Text(
+                                      ok
+                                          ? (rule.isActive
+                                                ? 'Rule deactivated'
+                                                : 'Rule activated')
+                                          : 'Update failed',
+                                    ),
+                                  ),
                                 );
                               }
                             });
@@ -1059,7 +1239,9 @@ class RuleListDialog extends StatelessWidget {
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 title: const Text('Confirm Deletion'),
-                                content: Text('Delete rule for "${rule.domain}" permanently? This cannot be undone.'),
+                                content: Text(
+                                  'Delete rule for "${rule.domain}" permanently? This cannot be undone.',
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx, false),
@@ -1067,7 +1249,9 @@ class RuleListDialog extends StatelessWidget {
                                   ),
                                   ElevatedButton(
                                     onPressed: () => Navigator.pop(ctx, true),
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                    ),
                                     child: const Text('Delete'),
                                   ),
                                 ],
@@ -1077,7 +1261,11 @@ class RuleListDialog extends StatelessWidget {
                               final ok = await ruleProvider.deleteRule(rule.id);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(ok ? 'Rule deleted' : 'Delete failed')),
+                                  SnackBar(
+                                    content: Text(
+                                      ok ? 'Rule deleted' : 'Delete failed',
+                                    ),
+                                  ),
                                 );
                               }
                             }
@@ -1092,14 +1280,32 @@ class RuleListDialog extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildDetailRow('Domain', rule.domain),
-                            _buildDetailRow('Backend', '$backendName (ID: ${rule.backendId})'),
-                            _buildDetailRow('Backend URL', '${backend.protocol}://${backend.host}:${backend.port}'),
+                            _buildDetailRow(
+                              'Backend',
+                              '$backendName (ID: ${rule.backendId})',
+                            ),
+                            _buildDetailRow(
+                              'Backend URL',
+                              '${backend.protocol}://${backend.host}:${backend.port}',
+                            ),
                             _buildDetailRow('Path Pattern', rule.pathPattern),
                             _buildDetailRow('Rule Type', rule.ruleType),
-                            _buildDetailRow('Status', rule.isActive ? 'Active' : 'Inactive'),
-                            _buildDetailRow('Created By', 'User ID: ${rule.createdBy}'),
-                            _buildDetailRow('Created At', rule.createdAt.toString()),
-                            _buildDetailRow('Updated At', rule.updatedAt.toString()),
+                            _buildDetailRow(
+                              'Status',
+                              rule.isActive ? 'Active' : 'Inactive',
+                            ),
+                            _buildDetailRow(
+                              'Created By',
+                              'User ID: ${rule.createdBy}',
+                            ),
+                            _buildDetailRow(
+                              'Created At',
+                              rule.createdAt.toString(),
+                            ),
+                            _buildDetailRow(
+                              'Updated At',
+                              rule.updatedAt.toString(),
+                            ),
                           ],
                         ),
                       ),
@@ -1131,15 +1337,29 @@ class CertificateListDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: domainCtl, decoration: const InputDecoration(labelText: 'Domain')),
+              TextField(
+                controller: domainCtl,
+                decoration: const InputDecoration(labelText: 'Domain'),
+              ),
               const SizedBox(height: 8),
-              TextField(controller: descCtl, decoration: const InputDecoration(labelText: 'Description (optional)')),
+              TextField(
+                controller: descCtl,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                ),
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -1147,7 +1367,9 @@ class CertificateListDialog extends StatelessWidget {
     if (result == true) {
       final domain = domainCtl.text.trim();
       if (domain.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Domain is required')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Domain is required')));
         return;
       }
       final ok = await context.read<CertificateProvider>().createCertificate(
@@ -1157,7 +1379,9 @@ class CertificateListDialog extends StatelessWidget {
         privateKey: '',
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Certificate saved' : 'Save failed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Certificate saved' : 'Save failed')),
+      );
     }
   }
 
@@ -1195,10 +1419,16 @@ class CertificateListDialog extends StatelessWidget {
                     tooltip: 'Delete',
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () async {
-                      final ok = await context.read<CertificateProvider>().deleteCertificate(cert.id);
+                      final ok = await context
+                          .read<CertificateProvider>()
+                          .deleteCertificate(cert.id);
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(ok ? 'Certificate deleted' : 'Delete failed')),
+                        SnackBar(
+                          content: Text(
+                            ok ? 'Certificate deleted' : 'Delete failed',
+                          ),
+                        ),
                       );
                     },
                   ),

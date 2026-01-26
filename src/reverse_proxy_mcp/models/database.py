@@ -29,6 +29,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False, default="user")  # admin or user
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)  # Force password change on first login
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

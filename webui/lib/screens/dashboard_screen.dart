@@ -47,7 +47,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Consumer<AuthProvider>(
                 builder: (_, auth, __) => Text(
                   'Welcome, ${auth.currentUser?.username ?? 'User'}',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -56,8 +59,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _StatCard(
                     title: 'Backends',
                     builder: (context) {
-                      final count = context.watch<BackendProvider>().backends.length;
-                      return Text('$count', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold));
+                      final count = context
+                          .watch<BackendProvider>()
+                          .backends
+                          .length;
+                      return Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
                     },
                   ),
                   const SizedBox(width: 16),
@@ -65,20 +77,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     title: 'Rules',
                     builder: (context) {
                       final count = context.watch<RuleProvider>().rules.length;
-                      return Text('$count', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold));
+                      return Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
                     },
                   ),
                   const SizedBox(width: 16),
                   _StatCard(
                     title: 'Certificates',
                     builder: (context) {
-                      final certs = context.watch<CertificateProvider>().certificates;
-                      final expiring = certs.where((c) => c.expiringInDays < 30).length;
+                      final certs = context
+                          .watch<CertificateProvider>()
+                          .certificates;
+                      final expiring = certs
+                          .where((c) => c.expiringInDays < 30)
+                          .length;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${certs.length}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                          Text('$expiring expiring', style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                          Text(
+                            '${certs.length}',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '$expiring expiring',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange,
+                            ),
+                          ),
                         ],
                       );
                     },
@@ -86,7 +120,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Metrics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Metrics',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
               Consumer<MetricsProvider>(
                 builder: (_, metrics, __) => Container(
@@ -104,7 +141,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       _MetricRow(
                         label: 'Avg Response Time',
-                        value: '${metrics.getAverageResponseTime().toStringAsFixed(2)}ms',
+                        value:
+                            '${metrics.getAverageResponseTime().toStringAsFixed(2)}ms',
                       ),
                       _MetricRow(
                         label: 'Total Errors',
@@ -121,12 +159,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Admin Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Admin Actions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () => context.read<RuleProvider>().reloadNginx(),
+                          onPressed: () =>
+                              context.read<RuleProvider>().reloadNginx(),
                           icon: const Icon(Icons.refresh),
                           label: const Text('Reload Nginx'),
                         ),
@@ -161,7 +206,10 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
             const SizedBox(height: 8),
             builder(context),
           ],

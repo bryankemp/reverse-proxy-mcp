@@ -178,7 +178,10 @@ class CertificateProvider extends ChangeNotifier {
       _isLoading = true;
       _error = null;
       notifyListeners();
-      _certificates = await _apiService.listCertificates(limit: limit, offset: offset);
+      _certificates = await _apiService.listCertificates(
+        limit: limit,
+        offset: offset,
+      );
       notifyListeners();
     } on ApiException catch (e) {
       _error = e.message;
@@ -213,6 +216,31 @@ class CertificateProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> setDefaultCertificate(int id) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      final updated = await _apiService.setDefaultCertificate(id);
+      // Update local state - set all to non-default, then set the one
+      for (var i = 0; i < _certificates.length; i++) {
+        if (_certificates[i].id == id) {
+          _certificates[i] = updated;
+        }
+      }
+      // Refresh to get updated list
+      await fetchCertificates();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
   Future<bool> deleteCertificate(int id) async {
     try {
       _isLoading = true;
@@ -230,7 +258,9 @@ class CertificateProvider extends ChangeNotifier {
   }
 
   List<Certificate> getExpiringCertificates(int daysThreshold) {
-    return _certificates.where((c) => c.expiringInDays <= daysThreshold).toList();
+    return _certificates
+        .where((c) => c.expiringInDays <= daysThreshold)
+        .toList();
   }
 
   void clearError() {
@@ -252,12 +282,18 @@ class MetricsProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchMetrics({String metricType = 'requests', int limit = 100}) async {
+  Future<void> fetchMetrics({
+    String metricType = 'requests',
+    int limit = 100,
+  }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
-      _metrics = await _apiService.getMetrics(metricType: metricType, limit: limit);
+      _metrics = await _apiService.getMetrics(
+        metricType: metricType,
+        limit: limit,
+      );
       notifyListeners();
     } on ApiException catch (e) {
       _error = e.message;
@@ -282,6 +318,147 @@ class MetricsProvider extends ChangeNotifier {
 
   int getTotalErrors() {
     return _metrics.fold(0, (sum, m) => sum + m.errorCount);
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+}
+
+/// Provider for managing users
+class UserProvider extends ChangeNotifier {
+  final ApiService _apiService;
+  List<User> _users = [];
+  bool _isLoading = false;
+  String? _error;
+
+  UserProvider(this._apiService);
+
+  List<User> get users => _users;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  Future<void> fetchUsers({int limit = 50, int offset = 0}) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      _users = await _apiService.listUsers(limit: limit, offset: offset);
+      notifyListeners();
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to fetch users: $e';
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<bool> createUser({
+    required String username,
+    required String email,
+    required String password,
+    String role = 'user',
+    String? fullName,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final user = await _apiService.createUser(
+        username: username,
+        email: email,
+        password: password,
+        role: role,
+        fullName: fullName,
+      );
+      _users.add(user);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<bool> updateUser(
+    int id, {
+    String? username,
+    String? email,
+    String? role,
+    String? fullName,
+    bool? isActive,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final updated = await _apiService.updateUser(
+        id,
+        username: username,
+        email: email,
+        role: role,
+        fullName: fullName,
+        isActive: isActive,
+      );
+      final index = _users.indexWhere((u) => u.id == id);
+      if (index >= 0) _users[index] = updated;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<bool> deleteUser(int id) async {
+    try {
+      _isLoading = true;
+      await _apiService.deleteUser(id);
+      _users.removeWhere((u) => u.id == id);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<bool> changePassword({
+    String? oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      await _apiService.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+    }
   }
 
   void clearError() {

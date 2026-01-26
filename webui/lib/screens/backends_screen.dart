@@ -95,11 +95,11 @@ class _BackendsScreenState extends State<BackendsScreen> {
           ElevatedButton(
             onPressed: () async {
               await context.read<BackendProvider>().createBackend(
-                    name: _nameController.text,
-                    host: _hostController.text,
-                    port: int.parse(_portController.text),
-                    description: _descriptionController.text,
-                  );
+                name: _nameController.text,
+                host: _hostController.text,
+                port: int.parse(_portController.text),
+                description: _descriptionController.text,
+              );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Add'),
@@ -154,12 +154,12 @@ class _BackendsScreenState extends State<BackendsScreen> {
           ElevatedButton(
             onPressed: () async {
               await context.read<BackendProvider>().updateBackend(
-                    id: backend.id,
-                    name: _nameController.text,
-                    host: _hostController.text,
-                    port: int.parse(_portController.text),
-                    description: _descriptionController.text,
-                  );
+                id: backend.id,
+                name: _nameController.text,
+                host: _hostController.text,
+                port: int.parse(_portController.text),
+                description: _descriptionController.text,
+              );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Update'),
@@ -172,10 +172,7 @@ class _BackendsScreenState extends State<BackendsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Backend Servers'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Backend Servers'), elevation: 0),
       drawer: const AppDrawer(),
       body: Consumer<BackendProvider>(
         builder: (context, provider, _) {
@@ -239,7 +236,9 @@ class _BackendsScreenState extends State<BackendsScreen> {
                     backend.name,
                     style: TextStyle(
                       color: backend.isActive ? null : Colors.grey[600],
-                      decoration: backend.isActive ? null : TextDecoration.lineThrough,
+                      decoration: backend.isActive
+                          ? null
+                          : TextDecoration.lineThrough,
                     ),
                   ),
                   subtitle: Text(
@@ -255,15 +254,16 @@ class _BackendsScreenState extends State<BackendsScreen> {
                         onTap: () => _showEditDialog(backend),
                       ),
                       PopupMenuItem(
-                        child: Text(backend.isActive ? 'Deactivate' : 'Activate'),
-                        onTap: () =>
-                            provider.updateBackend(
-                              id: backend.id,
-                              name: backend.name,
-                              host: backend.host,
-                              port: backend.port,
-                              isActive: !backend.isActive,
-                            ),
+                        child: Text(
+                          backend.isActive ? 'Deactivate' : 'Activate',
+                        ),
+                        onTap: () => provider.updateBackend(
+                          id: backend.id,
+                          name: backend.name,
+                          host: backend.host,
+                          port: backend.port,
+                          isActive: !backend.isActive,
+                        ),
                       ),
                       PopupMenuItem(
                         child: const Text('Delete'),

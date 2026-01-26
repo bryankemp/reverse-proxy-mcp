@@ -10,11 +10,7 @@ class ApiException implements Exception {
   final int? statusCode;
   final dynamic originalError;
 
-  ApiException({
-    required this.message,
-    this.statusCode,
-    this.originalError,
-  });
+  ApiException({required this.message, this.statusCode, this.originalError});
 
   @override
   String toString() => 'ApiException: $message (Status: $statusCode)';
@@ -122,14 +118,19 @@ class ApiService {
   // ===== Backend Endpoints =====
 
   /// List all backends
-  Future<List<BackendServer>> listBackends({int limit = 50, int offset = 0}) async {
+  Future<List<BackendServer>> listBackends({
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
       final response = await _dio.get(
         '/backends',
         queryParameters: {'limit': limit, 'offset': offset},
       );
       final list = response.data as List;
-      return list.map((item) => BackendServer.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => BackendServer.fromJson(item as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to fetch backends',
@@ -227,14 +228,19 @@ class ApiService {
   // ===== Proxy Rule Endpoints =====
 
   /// List all proxy rules
-  Future<List<ProxyRule>> listProxyRules({int limit = 50, int offset = 0}) async {
+  Future<List<ProxyRule>> listProxyRules({
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
       final response = await _dio.get(
         '/proxy-rules',
         queryParameters: {'limit': limit, 'offset': offset},
       );
       final list = response.data as List;
-      return list.map((item) => ProxyRule.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => ProxyRule.fromJson(item as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to fetch proxy rules',
@@ -280,7 +286,7 @@ class ApiService {
         'force_https': forceHttps,
         'ssl_enabled': sslEnabled,
       };
-      
+
       // Add optional fields only if provided
       if (rateLimit != null && rateLimit.isNotEmpty) {
         data['rate_limit'] = rateLimit;
@@ -288,7 +294,7 @@ class ApiService {
       if (ipWhitelist != null && ipWhitelist.isNotEmpty) {
         data['ip_whitelist'] = ipWhitelist;
       }
-      
+
       final response = await _dio.post('/proxy-rules', data: data);
       return ProxyRule.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -320,7 +326,8 @@ class ApiService {
       await _dio.post('/proxy-rules/$id/deactivate');
     } on DioException catch (e) {
       throw ApiException(
-        message: e.response?.data?['detail'] ?? 'Failed to deactivate proxy rule',
+        message:
+            e.response?.data?['detail'] ?? 'Failed to deactivate proxy rule',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -356,14 +363,19 @@ class ApiService {
   // ===== Certificate Endpoints =====
 
   /// List all certificates
-  Future<List<Certificate>> listCertificates({int limit = 50, int offset = 0}) async {
+  Future<List<Certificate>> listCertificates({
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
       final response = await _dio.get(
         '/certificates',
         queryParameters: {'limit': limit, 'offset': offset},
       );
       final list = response.data as List;
-      return list.map((item) => Certificate.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => Certificate.fromJson(item as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to fetch certificates',
@@ -387,6 +399,21 @@ class ApiService {
     }
   }
 
+  /// Set certificate as default
+  Future<Certificate> setDefaultCertificate(int id) async {
+    try {
+      final response = await _dio.put('/certificates/$id/set-default');
+      return Certificate.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        message:
+            e.response?.data?['detail'] ?? 'Failed to set default certificate',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
   /// Delete certificate
   Future<void> deleteCertificate(int id) async {
     try {
@@ -394,6 +421,132 @@ class ApiService {
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to delete certificate',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  // ===== User Management Endpoints =====
+
+  /// List all users
+  Future<List<User>> listUsers({int limit = 50, int offset = 0}) async {
+    try {
+      final response = await _dio.get(
+        '/users',
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      final list = response.data as List;
+      return list
+          .map((item) => User.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to fetch users',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Get user by ID
+  Future<User> getUser(int id) async {
+    try {
+      final response = await _dio.get('/users/$id');
+      return User.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to fetch user',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Create new user
+  Future<User> createUser({
+    required String username,
+    required String email,
+    required String password,
+    String role = 'user',
+    String? fullName,
+  }) async {
+    try {
+      final data = {
+        'username': username,
+        'email': email,
+        'password': password,
+        'role': role,
+      };
+      if (fullName != null && fullName.isNotEmpty) {
+        data['full_name'] = fullName;
+      }
+      final response = await _dio.post('/users', data: data);
+      return User.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to create user',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Update user
+  Future<User> updateUser(
+    int id, {
+    String? username,
+    String? email,
+    String? role,
+    String? fullName,
+    bool? isActive,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (username != null) data['username'] = username;
+      if (email != null) data['email'] = email;
+      if (role != null) data['role'] = role;
+      if (fullName != null) data['full_name'] = fullName;
+      if (isActive != null) data['is_active'] = isActive;
+
+      final response = await _dio.put('/users/$id', data: data);
+      return User.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to update user',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Delete user
+  Future<void> deleteUser(int id) async {
+    try {
+      await _dio.delete('/users/$id');
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to delete user',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
+  /// Change password
+  Future<void> changePassword({
+    String? oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final data = {'new_password': newPassword};
+      if (oldPassword != null && oldPassword.isNotEmpty) {
+        data['old_password'] = oldPassword;
+      }
+      await _dio.post('/auth/change-password', data: data);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to change password',
         statusCode: e.response?.statusCode,
         originalError: e,
       );
@@ -417,14 +570,19 @@ class ApiService {
   }
 
   /// Get metrics
-  Future<List<Metrics>> getMetrics({String metricType = 'requests', int limit = 100}) async {
+  Future<List<Metrics>> getMetrics({
+    String metricType = 'requests',
+    int limit = 100,
+  }) async {
     try {
       final response = await _dio.get(
         '/metrics',
         queryParameters: {'metric_type': metricType, 'limit': limit},
       );
       final list = response.data as List;
-      return list.map((item) => Metrics.fromJson(item as Map<String, dynamic>)).toList();
+      return list
+          .map((item) => Metrics.fromJson(item as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ApiException(
         message: e.response?.data?['detail'] ?? 'Failed to fetch metrics',
@@ -465,10 +623,7 @@ class LoggingInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    logger.d(
-      'REQUEST: ${options.method} ${options.path}',
-      error: options.data,
-    );
+    logger.d('REQUEST: ${options.method} ${options.path}', error: options.data);
     handler.next(options);
   }
 

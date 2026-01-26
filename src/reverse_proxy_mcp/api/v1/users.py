@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session
 from reverse_proxy_mcp.api.dependencies import require_admin, require_user
 from reverse_proxy_mcp.core import get_db
 from reverse_proxy_mcp.models.database import User
-from reverse_proxy_mcp.models.schemas import UserCreate, UserResponse, UserUpdate
+from reverse_proxy_mcp.models.schemas import (
+    ChangePasswordRequest,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from reverse_proxy_mcp.services.audit import AuditService
 from reverse_proxy_mcp.services.user import UserService
 
@@ -98,17 +103,35 @@ def delete_user(
 @router.post("/{user_id}/change-password")
 def change_password(
     user_id: int,
-    old_password: str,
-    new_password: str,
+    request: ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_user),
 ) -> dict:
-    """Change password (user or admin)."""
+    """Change password (user or admin).
+
+    If must_change_password is True, old_password is not required.
+    """
     # Allow users to change their own password, admins can change anyone's
     if current_user.role != "admin" and current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    success = UserService.change_password(db, user_id, old_password, new_password)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # If must_change_password is True, skip old password validation
+    if user.must_change_password:
+        success = UserService.force_password_change(db, user_id, request.new_password)
+    else:
+        if not request.old_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="old_password is required",
+            )
+        success = UserService.change_password(
+            db, user_id, request.old_password, request.new_password
+        )
+
     if not success:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password")
 

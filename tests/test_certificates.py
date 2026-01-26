@@ -88,6 +88,16 @@ class TestCertificates:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_set_default_certificate_not_found(self, client, auth_headers):
+        """Test setting nonexistent certificate as default."""
+        response = client.put("/api/v1/certificates/9999/set-default", headers=auth_headers)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_certificate_not_found(self, client, auth_headers):
+        """Test deleting nonexistent certificate."""
+        response = client.delete("/api/v1/certificates/9999", headers=auth_headers)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 @pytest.mark.unit
 class TestConfiguration:

@@ -3,7 +3,7 @@
 class AppConfig {
   // API Configuration - served from same port as web UI via /api/v1
   static const String apiBaseUrl = '/api/v1';
-  
+
   /// Get API base URL
   static String getApiBaseUrl() {
     return apiBaseUrl;
@@ -34,7 +34,10 @@ class AppConfig {
 
   // Features
   // Logging is disabled by default in release builds; can be enabled via --dart-define=APP_DEBUG=true
-  static const bool enableLogging = bool.fromEnvironment('APP_DEBUG', defaultValue: false);
+  static const bool enableLogging = bool.fromEnvironment(
+    'APP_DEBUG',
+    defaultValue: false,
+  );
   static const bool enableAnalytics = false;
 
   // Roles

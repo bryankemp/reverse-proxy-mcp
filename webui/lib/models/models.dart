@@ -8,6 +8,7 @@ class User {
   final String role; // 'admin' or 'user'
   final String fullName;
   final bool isActive;
+  final bool mustChangePassword;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,6 +19,7 @@ class User {
     required this.role,
     required this.fullName,
     required this.isActive,
+    required this.mustChangePassword,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,8 +32,13 @@ class User {
       role: json['role'] as String? ?? 'user',
       fullName: json['full_name'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      mustChangePassword: json['must_change_password'] as bool? ?? false,
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        json['updated_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -42,6 +49,7 @@ class User {
     'role': role,
     'full_name': fullName,
     'is_active': isActive,
+    'must_change_password': mustChangePassword,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -85,11 +93,18 @@ class BackendServer {
       // Backend schema currently doesn't expose protocol; default to http
       protocol: (json['protocol'] as String?) ?? 'http',
       // Backend returns 'service_description'
-      description: json['service_description'] as String? ?? json['description'] as String? ?? '',
+      description:
+          json['service_description'] as String? ??
+          json['description'] as String? ??
+          '',
       isActive: json['is_active'] as bool? ?? true,
       createdBy: json['created_by'] as int? ?? 0,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        json['updated_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -157,7 +172,8 @@ class ProxyRule {
     return ProxyRule(
       id: json['id'] as int? ?? 0,
       // Backend uses 'frontend_domain'
-      domain: json['frontend_domain'] as String? ?? json['domain'] as String? ?? '',
+      domain:
+          json['frontend_domain'] as String? ?? json['domain'] as String? ?? '',
       backendId: json['backend_id'] as int? ?? 0,
       accessControl: json['access_control'] as String?,
       ipWhitelist: json['ip_whitelist'] as String?,
@@ -174,8 +190,12 @@ class ProxyRule {
       sslEnabled: json['ssl_enabled'] as bool? ?? true,
       forceHttps: json['force_https'] as bool? ?? true,
       createdBy: json['created_by'] as int? ?? 0,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        json['updated_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -201,7 +221,9 @@ class ProxyRule {
 /// SSL Certificate model
 class Certificate {
   final int id;
+  final String name;
   final String domain;
+  final bool isDefault;
   final DateTime expiryDate;
   final bool isExpired;
   final int expiringInDays;
@@ -211,7 +233,9 @@ class Certificate {
 
   Certificate({
     required this.id,
+    required this.name,
     required this.domain,
+    required this.isDefault,
     required this.expiryDate,
     required this.isExpired,
     required this.expiringInDays,
@@ -221,24 +245,34 @@ class Certificate {
   });
 
   factory Certificate.fromJson(Map<String, dynamic> json) {
-    final expiry = DateTime.parse(json['expiry_date'] as String? ?? DateTime.now().toIso8601String());
+    final expiry = DateTime.parse(
+      json['expiry_date'] as String? ?? DateTime.now().toIso8601String(),
+    );
     final now = DateTime.now();
     final expiringInDays = expiry.difference(now).inDays;
 
     return Certificate(
       id: json['id'] as int? ?? 0,
+      name: json['name'] as String? ?? '',
       domain: json['domain'] as String? ?? '',
+      isDefault: json['is_default'] as bool? ?? false,
       expiryDate: expiry,
       isExpired: expiringInDays < 0,
       expiringInDays: expiringInDays,
       description: json['description'] as String? ?? '',
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        json['updated_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'name': name,
     'domain': domain,
+    'is_default': isDefault,
     'description': description,
   };
 
@@ -303,9 +337,12 @@ class Metrics {
 
   factory Metrics.fromJson(Map<String, dynamic> json) {
     return Metrics(
-      timestamp: DateTime.parse(json['timestamp'] as String? ?? DateTime.now().toIso8601String()),
+      timestamp: DateTime.parse(
+        json['timestamp'] as String? ?? DateTime.now().toIso8601String(),
+      ),
       requestCount: json['request_count'] as int? ?? 0,
-      averageResponseTime: (json['average_response_time'] as num?)?.toDouble() ?? 0.0,
+      averageResponseTime:
+          (json['average_response_time'] as num?)?.toDouble() ?? 0.0,
       errorCount: json['error_count'] as int? ?? 0,
       additionalData: json['data'] as Map<String, dynamic>?,
     );
@@ -319,14 +356,12 @@ class ApiResponse<T> {
   final String? message;
   final String? error;
 
-  ApiResponse({
-    required this.success,
-    this.data,
-    this.message,
-    this.error,
-  });
+  ApiResponse({required this.success, this.data, this.message, this.error});
 
-  factory ApiResponse.fromJson(Map<String, dynamic> json, T Function(dynamic) fromJson) {
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(dynamic) fromJson,
+  ) {
     return ApiResponse(
       success: json['status'] == 'success',
       data: json['data'] != null ? fromJson(json['data']) : null,
@@ -364,7 +399,9 @@ class AuditLogEntry {
       entityType: json['entity_type'] as String? ?? '',
       entityId: json['entity_id'] as int?,
       changes: json['changes'] as Map<String, dynamic>? ?? {},
-      timestamp: DateTime.parse(json['timestamp'] as String? ?? DateTime.now().toIso8601String()),
+      timestamp: DateTime.parse(
+        json['timestamp'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 }
