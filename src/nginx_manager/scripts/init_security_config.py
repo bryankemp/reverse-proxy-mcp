@@ -38,8 +38,8 @@ def init_security_config():
                 "types": "text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript",
             }
         ),
-        # Default SSL Certificate (if available)
-        "enable_default_ssl_server": "true",
+        # Default SSL Certificate (main nginx.conf already has default_server)
+        "enable_default_ssl_server": "false",
         "default_ssl_cert_path": "/etc/ssl/certs/default.crt",
         "default_ssl_key_path": "/etc/ssl/private/default.key",
     }
