@@ -22,9 +22,9 @@ RUN pip install --no-cache-dir -e .
 # Copy Flutter web build from builder stage
 COPY --from=flutter-builder /app/webui/build/web /app/webui/build/web
 
-# Create necessary directories
+# Create necessary directories and files
 RUN mkdir -p /var/log/nginx /var/log/supervisor /var/log /app/data /etc/nginx/conf.d && \
-    touch /var/log/nginx/access.log /var/log/nginx/error.log && \
+    touch /var/log/nginx/access.log /var/log/nginx/error.log /etc/nginx/conf.d/proxy.conf && \
     chmod -R 777 /var/log/nginx /var/log/supervisor /var/log
 
 # Copy Nginx config
@@ -33,8 +33,9 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 # Copy Supervisord config
 COPY supervisord.conf /etc/supervisord.conf
 
-# Initialize database and create admin user on startup
-RUN mkdir -p /app/data && python -c 'from nginx_manager.core.database import create_all_tables; create_all_tables()' 2>/dev/null || true
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose ports
 EXPOSE 80 443
@@ -42,5 +43,5 @@ EXPOSE 80 443
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost/health || exit 1
 
-# Run supervisord directly
-CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+# Run entrypoint script
+CMD ["/entrypoint.sh"]
