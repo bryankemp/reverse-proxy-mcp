@@ -294,11 +294,6 @@ class AdminDashboard extends StatelessWidget {
                                 builder: (context) => const HealthCheckDialog(),
                               );
                             },
-                            actionButton: ActionButton(
-                              icon: Icons.code,
-                              label: 'View Config',
-                              onPressed: () => _showNginxConfig(context),
-                            ),
                           ),
                         ),
                       ],
