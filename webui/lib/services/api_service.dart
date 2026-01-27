@@ -270,6 +270,7 @@ class ApiService {
     required int backendId,
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
+    int? certificateId,
     bool enableHsts = false,
     bool forceHttps = true,
     bool sslEnabled = true,
@@ -288,6 +289,9 @@ class ApiService {
       };
 
       // Add optional fields only if provided
+      if (certificateId != null) {
+        data['certificate_id'] = certificateId;
+      }
       if (rateLimit != null && rateLimit.isNotEmpty) {
         data['rate_limit'] = rateLimit;
       }
