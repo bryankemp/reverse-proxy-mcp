@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:html' as html; // For web redirect on auth failures
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import '../config/app_config.dart';
@@ -403,6 +405,45 @@ class ApiService {
     }
   }
 
+  /// Create certificate (multipart form upload)
+  Future<Certificate> createCertificate({
+    required String name,
+    required String domain,
+    required String certificatePem,
+    required String privateKeyPem,
+    bool isDefault = false,
+    String? certFileName,
+    String? keyFileName,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'name': name,
+        'domain': domain,
+        'is_default': isDefault,
+        'cert_file': MultipartFile.fromBytes(
+          utf8.encode(certificatePem),
+          filename: (certFileName == null || certFileName.isEmpty)
+              ? 'certificate.pem'
+              : certFileName,
+        ),
+        'key_file': MultipartFile.fromBytes(
+          utf8.encode(privateKeyPem),
+          filename: (keyFileName == null || keyFileName.isEmpty)
+              ? 'private.key'
+              : keyFileName,
+        ),
+      });
+      final response = await _dio.post('/certificates', data: form);
+      return Certificate.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to create certificate',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
+
   /// Set certificate as default
   Future<Certificate> setDefaultCertificate(int id) async {
     try {
@@ -691,5 +732,21 @@ class AuthInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
     handler.next(options);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final status = err.response?.statusCode ?? 0;
+    if (status == 401) {
+      // Unknown/expired user → clear session and redirect to login
+      try {
+        await storage.deleteToken();
+      } catch (_) {}
+      // Force reload to root; AppRouter will present LoginScreen
+      // Use replaceState to avoid back navigation loop
+      html.window.location.assign('/');
+      return; // Stop further handling
+    }
+    super.onError(err, handler);
   }
 }

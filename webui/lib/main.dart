@@ -10,6 +10,9 @@ import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/certificates_screen.dart';
+import 'screens/users_screen.dart';
+import 'screens/audit_screen.dart';
 import 'widgets/password_change_dialog.dart';
 import 'models/models.dart';
 
@@ -201,6 +204,19 @@ class AdminDashboard extends StatelessWidget {
               child: Center(
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.account_circle, color: Colors.white),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => PasswordChangeDialog(
+                            isRequired: false,
+                            username: auth.currentUser?.username,
+                          ),
+                        );
+                      },
+                      tooltip: 'Change Password',
+                    ),
                     Text(
                       auth.currentUser?.username ?? 'User',
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -223,6 +239,7 @@ class AdminDashboard extends StatelessWidget {
           ),
         ],
       ),
+      drawer: const AdminDrawer(),
       body: LayoutBuilder(
         builder: (context, constraints) {
           return Scrollbar(
@@ -294,17 +311,12 @@ class AdminDashboard extends StatelessWidget {
                           child: AdminCard(
                             title: 'SSL Certificates',
                             icon: Icons.security,
-                            onTap: () async {
-                              await context
-                                  .read<CertificateProvider>()
-                                  .fetchCertificates();
-                              if (context.mounted) {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) =>
-                                      const CertificateListDialog(),
-                                );
-                              }
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const CertificatesScreen(),
+                                ),
+                              );
                             },
                           ),
                         ),
@@ -322,6 +334,21 @@ class AdminDashboard extends StatelessWidget {
                             },
                           ),
                         ),
+                        SizedBox(
+                          width: 420,
+                          height: 280,
+                          child: AdminCard(
+                            title: 'Users',
+                            icon: Icons.people,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const UsersScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -331,6 +358,172 @@ class AdminDashboard extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class AdminDrawer extends StatelessWidget {
+  const AdminDrawer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) => DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(
+                    Icons.admin_panel_settings,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    auth.currentUser?.username ?? 'User',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    auth.isAdmin ? 'Administrator' : 'User',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Dashboard'),
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.storage),
+            title: const Text('Backend Servers'),
+            onTap: () async {
+              Navigator.pop(context);
+              await context.read<BackendProvider>().fetchBackends();
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => const BackendListDialog(),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.domain),
+            title: const Text('Proxy Rules'),
+            onTap: () async {
+              Navigator.pop(context);
+              await Future.wait([
+                context.read<RuleProvider>().fetchRules(),
+                context.read<BackendProvider>().fetchBackends(),
+              ]);
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => const RuleListDialog(),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.security),
+            title: const Text('SSL Certificates'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CertificatesScreen(),
+                ),
+              );
+            },
+          ),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              if (!auth.isAdmin) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.people),
+                    title: const Text('User Management'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const UsersScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: const Text('Audit Logs'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AuditScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.health_and_safety),
+            title: const Text('System Health'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => const HealthCheckDialog(),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock),
+            title: const Text('Change Password'),
+            onTap: () {
+              Navigator.pop(context);
+              final auth = context.read<AuthProvider>();
+              showDialog(
+                context: context,
+                builder: (context) => PasswordChangeDialog(
+                  isRequired: false,
+                  username: auth.currentUser?.username,
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              context.read<AuthProvider>().logout();
+              Navigator.of(context).pushReplacementNamed('/');
+            },
+          ),
+        ],
       ),
     );
   }
@@ -811,6 +1004,7 @@ class RuleListDialog extends StatelessWidget {
     final ipWhitelistCtl = TextEditingController(text: rule.ipWhitelist ?? '');
     String ruleType = rule.ruleType;
     int? selectedBackendId = rule.backendId;
+    int? selectedCertificateId = rule.certificateId;
     bool enableHsts = rule.enableHsts ?? false;
     bool forceHttps = rule.forceHttps ?? true;
     bool sslEnabled = rule.sslEnabled ?? true;
@@ -818,6 +1012,13 @@ class RuleListDialog extends StatelessWidget {
     // Get available backends
     final backendProvider = context.read<BackendProvider>();
     final backends = backendProvider.backends.where((b) => b.isActive).toList();
+
+    // Get available certificates
+    final certProvider = context.read<CertificateProvider>();
+    if (certProvider.certificates.isEmpty) {
+      await certProvider.fetchCertificates();
+    }
+    final certificates = certProvider.certificates;
 
     final result = await showDialog<bool>(
       context: context,
@@ -869,6 +1070,37 @@ class RuleListDialog extends StatelessWidget {
                     onChanged: (v) =>
                         setState(() => ruleType = v ?? 'reverse_proxy'),
                     decoration: const InputDecoration(labelText: 'Rule Type'),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int?>(
+                    value: selectedCertificateId,
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Use default certificate'),
+                      ),
+                      ...certificates.map((cert) => DropdownMenuItem<int?>(
+                        value: cert.id,
+                        child: Row(
+                          children: [
+                            if (cert.isDefault)
+                              const Icon(Icons.star, size: 16, color: Colors.amber),
+                            if (cert.isDefault) const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '${cert.name} (${cert.domain})',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                    ],
+                    onChanged: (v) => setState(() => selectedCertificateId = v),
+                    decoration: const InputDecoration(
+                      labelText: 'SSL Certificate',
+                      hintText: 'Select certificate (optional)',
+                    ),
                   ),
                   const Divider(height: 24),
                   const Text(
@@ -950,6 +1182,7 @@ class RuleListDialog extends StatelessWidget {
         backendId: selectedBackendId!,
         pathPattern: path,
         ruleType: ruleType,
+        certificateId: selectedCertificateId,
         enableHsts: enableHsts,
         forceHttps: forceHttps,
         sslEnabled: sslEnabled,
@@ -976,6 +1209,7 @@ class RuleListDialog extends StatelessWidget {
     final ipWhitelistCtl = TextEditingController();
     String ruleType = 'reverse_proxy';
     int? selectedBackendId;
+    int? selectedCertificateId;
     bool enableHsts = false;
     bool forceHttps = true;
     bool sslEnabled = true;
@@ -983,6 +1217,13 @@ class RuleListDialog extends StatelessWidget {
     // Get available backends
     final backendProvider = context.read<BackendProvider>();
     final backends = backendProvider.backends.where((b) => b.isActive).toList();
+
+    // Get available certificates
+    final certProvider = context.read<CertificateProvider>();
+    if (certProvider.certificates.isEmpty) {
+      await certProvider.fetchCertificates();
+    }
+    final certificates = certProvider.certificates;
 
     if (backends.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1044,6 +1285,37 @@ class RuleListDialog extends StatelessWidget {
                   onChanged: (v) =>
                       setState(() => ruleType = v ?? 'reverse_proxy'),
                   decoration: const InputDecoration(labelText: 'Rule Type'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int?>(
+                  value: selectedCertificateId,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Use default certificate'),
+                    ),
+                    ...certificates.map((cert) => DropdownMenuItem<int?>(
+                      value: cert.id,
+                      child: Row(
+                        children: [
+                          if (cert.isDefault)
+                            const Icon(Icons.star, size: 16, color: Colors.amber),
+                          if (cert.isDefault) const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${cert.name} (${cert.domain})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
+                  onChanged: (v) => setState(() => selectedCertificateId = v),
+                  decoration: const InputDecoration(
+                    labelText: 'SSL Certificate',
+                    hintText: 'Select certificate (optional)',
+                  ),
                 ),
                 const Divider(height: 24),
                 const Text(
@@ -1123,6 +1395,7 @@ class RuleListDialog extends StatelessWidget {
         backendId: selectedBackendId!,
         pathPattern: path,
         ruleType: ruleType,
+        certificateId: selectedCertificateId,
         enableHsts: enableHsts,
         forceHttps: forceHttps,
         sslEnabled: sslEnabled,

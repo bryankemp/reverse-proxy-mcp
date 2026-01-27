@@ -129,6 +129,7 @@ class ProxyRule {
   final int id;
   final String domain; // maps to backend 'frontend_domain'
   final int backendId;
+  final int? certificateId; // SSL certificate ID (null = use default)
   final String? accessControl;
   final String? ipWhitelist;
   // Optional fields; backend may not support these yet
@@ -151,6 +152,7 @@ class ProxyRule {
     required this.id,
     required this.domain,
     required this.backendId,
+    this.certificateId,
     this.accessControl,
     this.ipWhitelist,
     required this.pathPattern,
@@ -175,6 +177,7 @@ class ProxyRule {
       domain:
           json['frontend_domain'] as String? ?? json['domain'] as String? ?? '',
       backendId: json['backend_id'] as int? ?? 0,
+      certificateId: json['certificate_id'] as int?,
       accessControl: json['access_control'] as String?,
       ipWhitelist: json['ip_whitelist'] as String?,
       // Optional / not yet in backend – keep defaults if missing
@@ -203,6 +206,7 @@ class ProxyRule {
     // Backend expects 'frontend_domain'
     'frontend_domain': domain,
     'backend_id': backendId,
+    if (certificateId != null) 'certificate_id': certificateId,
     if (accessControl != null) 'access_control': accessControl,
     if (ipWhitelist != null) 'ip_whitelist': ipWhitelist,
     // Include is_active for updates
@@ -248,7 +252,7 @@ class Certificate {
     final expiry = DateTime.parse(
       json['expiry_date'] as String? ?? DateTime.now().toIso8601String(),
     );
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final expiringInDays = expiry.difference(now).inDays;
 
     return Certificate(

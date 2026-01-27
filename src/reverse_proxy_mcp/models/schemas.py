@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 
 # User Schemas
@@ -10,8 +10,21 @@ class UserBase(BaseModel):
     """Base user schema."""
 
     username: str = Field(..., min_length=3, max_length=50)
-    email: EmailStr
+    email: str = Field(..., min_length=5, max_length=255)
     role: str = Field(default="user", pattern="^(admin|user)$")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Basic email validation allowing .local domains."""
+        if "@" not in v or v.count("@") != 1:
+            raise ValueError("Invalid email format")
+        local, domain = v.split("@")
+        if not local or not domain:
+            raise ValueError("Invalid email format")
+        if "." not in domain and not domain.endswith(".local"):
+            raise ValueError("Invalid email domain")
+        return v.lower()
 
 
 class UserCreate(UserBase):
@@ -23,9 +36,24 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """User update schema."""
 
-    email: EmailStr | None = None
+    email: str | None = Field(None, min_length=5, max_length=255)
     role: str | None = Field(None, pattern="^(admin|user)$")
     is_active: bool | None = None
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str | None) -> str | None:
+        """Basic email validation allowing .local domains."""
+        if v is None:
+            return v
+        if "@" not in v or v.count("@") != 1:
+            raise ValueError("Invalid email format")
+        local, domain = v.split("@")
+        if not local or not domain:
+            raise ValueError("Invalid email format")
+        if "." not in domain and not domain.endswith(".local"):
+            raise ValueError("Invalid email domain")
+        return v.lower()
 
 
 class UserResponse(UserBase):

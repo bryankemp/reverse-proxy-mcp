@@ -1,16 +1,19 @@
 """SSL certificate management service."""
 
+import logging
 import os
 from datetime import datetime
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from sqlalchemy.orm import Session
 
 from reverse_proxy_mcp.core.config import settings
 from reverse_proxy_mcp.models.database import ProxyRule, SSLCertificate
+
+logger = logging.getLogger(__name__)
 
 
 class CertificateService:
@@ -21,7 +24,7 @@ class CertificateService:
         """Validate that certificate and private key match.
 
         Args:
-            cert_content: PEM-encoded certificate
+            cert_content: PEM-encoded certificate (may include chain)
             key_content: PEM-encoded private key
 
         Returns:
@@ -31,26 +34,65 @@ class CertificateService:
             ValueError: If certificate or key is invalid
         """
         try:
-            # Load certificate
-            cert = x509.load_pem_x509_certificate(cert_content.encode(), default_backend())
-
-            # Load private key
+            # Load private key first
             private_key = serialization.load_pem_private_key(
                 key_content.encode(), password=None, backend=default_backend()
             )
+
+            # If cert_content contains multiple certificates (a chain),
+            # extract the first one (the leaf/server certificate)
+            cert_lines = cert_content.strip().split("\n")
+            cert_start = None
+            cert_end = None
+
+            for i, line in enumerate(cert_lines):
+                if "-----BEGIN CERTIFICATE-----" in line:
+                    cert_start = i
+                elif "-----END CERTIFICATE-----" in line and cert_start is not None:
+                    cert_end = i
+                    break
+
+            if cert_start is None or cert_end is None:
+                raise ValueError("No valid certificate found in content")
+
+            # Extract just the first certificate
+            first_cert_content = "\n".join(cert_lines[cert_start : cert_end + 1])
+
+            # Load the first certificate
+            cert = x509.load_pem_x509_certificate(first_cert_content.encode(), default_backend())
 
             # Verify the key matches the certificate by checking public key
             cert_public_key = cert.public_key()
             key_public_key = private_key.public_key()
 
-            # Compare public key numbers (works for RSA)
+            logger.info(f"Certificate public key type: {type(cert_public_key).__name__}")
+            logger.info(f"Private key type: {type(private_key).__name__}")
+            logger.info(f"Private key public key type: {type(key_public_key).__name__}")
+
+            # Compare public key numbers based on key type
             if isinstance(private_key, rsa.RSAPrivateKey):
+                # RSA key comparison
+                if not isinstance(cert_public_key, rsa.RSAPublicKey):
+                    raise ValueError("Certificate key type does not match private key type")
                 cert_numbers = cert_public_key.public_numbers()
                 key_numbers = key_public_key.public_numbers()
                 if cert_numbers.n != key_numbers.n or cert_numbers.e != key_numbers.e:
                     raise ValueError("Certificate and private key do not match")
+            elif isinstance(private_key, ec.EllipticCurvePrivateKey):
+                # ECDSA key comparison
+                if not isinstance(cert_public_key, ec.EllipticCurvePublicKey):
+                    raise ValueError("Certificate key type does not match private key type")
+                cert_numbers = cert_public_key.public_numbers()
+                key_numbers = key_public_key.public_numbers()
+                if cert_numbers.x != key_numbers.x or cert_numbers.y != key_numbers.y:
+                    raise ValueError("Certificate and private key do not match")
+            else:
+                raise ValueError(f"Unsupported key type: {type(private_key).__name__}")
 
             return True
+        except ValueError:
+            # Re-raise ValueError as-is
+            raise
         except Exception as e:
             raise ValueError(f"Invalid certificate or key: {str(e)}") from e
 
@@ -59,16 +101,35 @@ class CertificateService:
         """Parse certificate and extract expiry date.
 
         Args:
-            cert_content: PEM-encoded certificate content
+            cert_content: PEM-encoded certificate content (may include chain)
 
         Returns:
             Expiry datetime or None if parsing fails
         """
         try:
-            cert = x509.load_pem_x509_certificate(cert_content.encode(), default_backend())
-            expiry = cert.not_valid_after()
-            return datetime.fromisoformat(expiry.isoformat())
-        except Exception:
+            # Extract just the first certificate from chain if present
+            cert_lines = cert_content.strip().split("\n")
+            cert_start = None
+            cert_end = None
+
+            for i, line in enumerate(cert_lines):
+                if "-----BEGIN CERTIFICATE-----" in line:
+                    cert_start = i
+                elif "-----END CERTIFICATE-----" in line and cert_start is not None:
+                    cert_end = i
+                    break
+
+            if cert_start is None or cert_end is None:
+                return None
+
+            # Extract just the first certificate
+            first_cert_content = "\n".join(cert_lines[cert_start : cert_end + 1])
+
+            cert = x509.load_pem_x509_certificate(first_cert_content.encode(), default_backend())
+            expiry = cert.not_valid_after_utc
+            return expiry.replace(tzinfo=None)  # Convert to naive UTC datetime
+        except Exception as e:
+            logger.error(f"Failed to parse certificate expiry: {e}")
             return None
 
     @staticmethod

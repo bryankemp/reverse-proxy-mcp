@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from reverse_proxy_mcp.api.dependencies import get_current_user
 from reverse_proxy_mcp.core import (
     create_access_token,
     get_db,
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Authenticate user and return JWT token."""
     # Hardcoded default credentials
-    if credentials.username == "admin" and credentials.password == "password":
+    if credentials.username == "admin" and credentials.password == "admin123":
         # Create or get admin user from database
         from reverse_proxy_mcp.core.security import hash_password
 
@@ -28,7 +29,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             user = User(
                 username="admin",
                 email="admin@reverse-proxy-mcp.local",
-                password_hash=hash_password("password"),
+                password_hash=hash_password("admin123"),
                 role="admin",
                 is_active=True,
                 must_change_password=True,  # Force password change on first login
@@ -107,10 +108,57 @@ def logout() -> dict:
 
 
 @router.post("/change-password")
-def change_password(old_password: str, new_password: str, token: str) -> dict:
-    """Change user password."""
-    # Placeholder - implement with proper token extraction and user lookup
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Implement with proper token extraction",
-    )
+def change_password(
+    request_data: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)
+) -> dict:
+    """Change user password.
+
+    Args:
+        request_data: Dictionary with keys 'old_password' (optional) and 'new_password' (required)
+        db: Database session
+        current_user: Currently authenticated user from token
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: If old password is incorrect or validation fails
+    """
+    from reverse_proxy_mcp.core.security import hash_password
+
+    new_password = request_data.get("new_password")
+    old_password = request_data.get("old_password")
+
+    if not new_password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="New password is required",
+        )
+
+    if len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 8 characters long",
+        )
+
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # If old_password is provided, verify it
+    if old_password:
+        if not verify_password(old_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
+            )
+
+    # Update password
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = False
+    db.commit()
+
+    return {"detail": "Password changed successfully"}

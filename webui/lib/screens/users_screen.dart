@@ -384,102 +384,65 @@ class _UsersScreenState extends State<UsersScreen> {
                 ],
               ),
             )
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${userProvider.users.length} user(s)',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columns: const [
-                            DataColumn(label: Text('ID')),
-                            DataColumn(label: Text('Username')),
-                            DataColumn(label: Text('Email')),
-                            DataColumn(label: Text('Full Name')),
-                            DataColumn(label: Text('Role')),
-                            DataColumn(label: Text('Active')),
-                            DataColumn(label: Text('Created')),
-                            DataColumn(label: Text('Actions')),
-                          ],
-                          rows: userProvider.users.map((user) {
-                            return DataRow(
-                              cells: [
-                                DataCell(Text(user.id.toString())),
-                                DataCell(Text(user.username)),
-                                DataCell(Text(user.email)),
-                                DataCell(Text(user.fullName ?? '-')),
-                                DataCell(
-                                  Chip(
-                                    label: Text(user.role.toUpperCase()),
-                                    backgroundColor: user.isAdmin
-                                        ? Colors.purple.shade100
-                                        : Colors.blue.shade100,
-                                  ),
-                                ),
-                                DataCell(
-                                  Icon(
-                                    user.isActive
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    color: user.isActive
-                                        ? Colors.green
-                                        : Colors.grey,
-                                    size: 20,
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    user.createdAt != null
-                                        ? '${user.createdAt!.year}-${user.createdAt!.month.toString().padLeft(2, '0')}-${user.createdAt!.day.toString().padLeft(2, '0')}'
-                                        : '-',
-                                  ),
-                                ),
-                                DataCell(
-                                  authProvider.isAdmin
-                                      ? Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                size: 20,
-                                              ),
-                                              onPressed: () =>
-                                                  _showEditDialog(user),
-                                              tooltip: 'Edit',
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                size: 20,
-                                              ),
-                                              color: Colors.red,
-                                              onPressed: () =>
-                                                  _confirmDelete(user),
-                                              tooltip: 'Delete',
-                                            ),
-                                          ],
-                                        )
-                                      : const Text('-'),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: userProvider.users.length,
+              itemBuilder: (context, index) {
+                final user = userProvider.users[index];
+                return Card(
+                  color: user.isActive ? null : Colors.grey[200],
+                  child: ListTile(
+                    leading: Icon(
+                      user.isAdmin ? Icons.admin_panel_settings : Icons.person,
+                      color: user.isActive
+                          ? (user.isAdmin ? Colors.purple : Colors.blue)
+                          : Colors.grey,
+                    ),
+                    title: Text(
+                      user.username,
+                      style: TextStyle(
+                        color: user.isActive ? null : Colors.grey[600],
+                        decoration: user.isActive
+                            ? null
+                            : TextDecoration.lineThrough,
                       ),
                     ),
+                    subtitle: Text(
+                      '${user.email} • ${user.role.toUpperCase()}${user.isActive ? '' : ' (Inactive)'}',
+                      style: TextStyle(
+                        color: user.isActive ? null : Colors.grey[600],
+                      ),
+                    ),
+                    trailing: authProvider.isAdmin
+                        ? PopupMenuButton(
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                child: const Text('Edit'),
+                                onTap: () => _showEditDialog(user),
+                              ),
+                              PopupMenuItem(
+                                child: Text(
+                                  user.isActive ? 'Deactivate' : 'Activate',
+                                ),
+                                onTap: () => userProvider.updateUser(
+                                  user.id,
+                                  username: user.username,
+                                  email: user.email,
+                                  role: user.role,
+                                  fullName: user.fullName,
+                                  isActive: !user.isActive,
+                                ),
+                              ),
+                              PopupMenuItem(
+                                child: const Text('Delete'),
+                                onTap: () => _confirmDelete(user),
+                              ),
+                            ],
+                          )
+                        : null,
                   ),
-                ],
-              ),
+                );
+              },
             ),
     );
   }

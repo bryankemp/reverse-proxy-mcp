@@ -1,5 +1,7 @@
 """SSL certificate management endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,8 @@ from reverse_proxy_mcp.models.database import User
 from reverse_proxy_mcp.models.schemas import CertificateListItem, SSLCertificateResponse
 from reverse_proxy_mcp.services.audit import AuditService
 from reverse_proxy_mcp.services.certificate import CertificateService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
 
@@ -72,15 +76,23 @@ async def upload_certificate(
         )
 
     try:
+        logger.info(f"Uploading certificate: name={name}, domain={domain}, is_default={is_default}")
+        logger.info(f"Cert file: {cert_file.filename}, content_type={cert_file.content_type}")
+        logger.info(f"Key file: {key_file.filename}, content_type={key_file.content_type}")
+
         # Read certificate content
         cert_content = await cert_file.read()
         if isinstance(cert_content, bytes):
             cert_content = cert_content.decode("utf-8")
+        logger.info(f"Certificate content length: {len(cert_content)} chars")
+        logger.debug(f"Certificate content preview: {cert_content[:100]}...")
 
         # Read key content
         key_content = await key_file.read()
         if isinstance(key_content, bytes):
             key_content = key_content.decode("utf-8")
+        logger.info(f"Key content length: {len(key_content)} chars")
+        logger.debug(f"Key content preview: {key_content[:100]}...")
 
         # Create certificate (validation happens inside)
         new_cert = CertificateService.create_certificate(
@@ -99,11 +111,13 @@ async def upload_certificate(
 
         return new_cert
     except ValueError as e:
+        logger.error(f"Certificate validation error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
     except Exception as e:
+        logger.error(f"Certificate upload error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to upload certificate: {str(e)}",

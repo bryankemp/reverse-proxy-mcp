@@ -105,10 +105,11 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add Certificate'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+        content: StatefulBuilder(
+          builder: (ctx, setLocalState) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               TextField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -173,7 +174,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                 title: const Text('Set as Default Certificate'),
                 value: _isDefault,
                 onChanged: (value) {
-                  setState(() {
+                  setLocalState(() {
                     _isDefault = value ?? false;
                   });
                 },
@@ -182,6 +183,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
             ],
           ),
         ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -189,13 +191,21 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await context.read<CertificateProvider>().createCertificate(
-                name: _nameController.text,
-                domain: _domainController.text,
+              final ok = await context.read<CertificateProvider>().createCertificate(
+                name: _nameController.text.trim(),
+                domain: _domainController.text.trim(),
                 certificate: _certController.text,
                 privateKey: _keyController.text,
+                isDefault: _isDefault,
+                certFileName: _certFileName,
+                keyFileName: _keyFileName,
               );
-              if (mounted) Navigator.pop(context);
+              if (ok && mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Certificate added')),
+                );
+              }
             },
             child: const Text('Add'),
           ),
@@ -205,7 +215,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   }
 
   String _getExpiryStatus(DateTime expiryDate) {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final daysUntilExpiry = expiryDate.difference(now).inDays;
 
     if (daysUntilExpiry < 0) {
@@ -275,13 +285,14 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               final cert = provider.certificates[index];
               final expiryStatus = _getExpiryStatus(cert.expiryDate);
               final isExpiring =
-                  cert.expiryDate.difference(DateTime.now()).inDays < 30;
+                  cert.expiryDate.difference(DateTime.now().toUtc()).inDays < 30;
 
               return Card(
                 child: ListTile(
-                  leading: cert.isDefault
-                      ? const Icon(Icons.star, color: Colors.amber)
-                      : const Icon(Icons.security, color: Colors.blue),
+                  leading: Icon(
+                    cert.isDefault ? Icons.star : Icons.security,
+                    color: cert.isDefault ? Colors.amber : Colors.blue,
+                  ),
                   title: Row(
                     children: [
                       Text(cert.name),
@@ -298,19 +309,11 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                       ],
                     ],
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Domain: ${cert.domain}'),
-                      if (cert.description.isNotEmpty)
-                        Text('Description: ${cert.description}'),
-                      Text(
-                        expiryStatus,
-                        style: TextStyle(
-                          color: isExpiring ? Colors.orange : Colors.green,
-                        ),
-                      ),
-                    ],
+                  subtitle: Text(
+                    '$expiryStatus • ${cert.domain}',
+                    style: TextStyle(
+                      color: isExpiring ? Colors.orange : Colors.grey[600],
+                    ),
                   ),
                   trailing: PopupMenuButton(
                     itemBuilder: (context) => [
@@ -336,7 +339,33 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                         ),
                       PopupMenuItem(
                         child: const Text('Delete'),
-                        onTap: () => provider.deleteCertificate(cert.id),
+                        onTap: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Confirm Deletion'),
+                              content: Text(
+                                'Delete certificate "${cert.name}" permanently? This cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await provider.deleteCertificate(cert.id);
+                          }
+                        },
                       ),
                     ],
                   ),

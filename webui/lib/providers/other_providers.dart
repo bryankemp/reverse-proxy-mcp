@@ -82,6 +82,7 @@ class RuleProvider extends ChangeNotifier {
     required int backendId,
     String pathPattern = '/',
     String ruleType = 'reverse_proxy',
+    int? certificateId,
     bool? isActive,
     bool? enableHsts,
     bool? forceHttps,
@@ -97,6 +98,7 @@ class RuleProvider extends ChangeNotifier {
         id: id,
         domain: domain,
         backendId: backendId,
+        certificateId: certificateId ?? existing.certificateId,
         pathPattern: pathPattern,
         ruleType: ruleType,
         isActive: isActive ?? existing.isActive,
@@ -201,12 +203,29 @@ class CertificateProvider extends ChangeNotifier {
     required String domain,
     required String certificate,
     required String privateKey,
+    bool isDefault = false,
+    String? certFileName,
+    String? keyFileName,
   }) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
-      // API call would go here - for now just add locally
+      final created = await _apiService.createCertificate(
+        name: name,
+        domain: domain,
+        certificatePem: certificate,
+        privateKeyPem: privateKey,
+        isDefault: isDefault,
+        certFileName: certFileName,
+        keyFileName: keyFileName,
+      );
+      // If default was set, re-fetch to get correct flags for all certs
+      if (isDefault) {
+        await fetchCertificates();
+      } else {
+        _certificates.add(created);
+      }
       notifyListeners();
       return true;
     } on ApiException catch (e) {

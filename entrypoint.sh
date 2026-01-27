@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+# Ensure Nginx log directory exists with proper permissions
+mkdir -p /var/log/nginx
+touch /var/log/nginx/access.log /var/log/nginx/error.log
+chmod -R 777 /var/log/nginx
+
 # Initialize database tables
 python -c 'from reverse_proxy_mcp.core.database import create_all_tables; create_all_tables()' 2>/dev/null || true
 

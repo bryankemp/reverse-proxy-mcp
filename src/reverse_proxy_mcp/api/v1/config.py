@@ -64,6 +64,39 @@ def reload_nginx(
     return {"success": True, "message": message}
 
 
+@router.get("/logs")
+def get_system_logs(
+    lines: int = 1000,
+    current_user: User = Depends(require_admin),
+) -> dict:
+    """Return last N lines of system logs (admin only).
+
+    Reads Nginx access and error logs from /var/log/nginx and returns them as a single text blob.
+    """
+    import os
+
+    access_path = "/var/log/nginx/access.log"
+    error_path = "/var/log/nginx/error.log"
+
+    def tail_file(path: str, n: int) -> list[str]:
+        if not os.path.exists(path):
+            return [f"[missing] {path}"]
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                data = f.read().splitlines()
+                return data[-n:]
+        except Exception as e:  # pragma: no cover
+            return [f"[error reading {path}: {e}]"]
+
+    access_lines = tail_file(access_path, lines)
+    error_lines = tail_file(error_path, lines)
+
+    combined = (
+        ["=== NGINX ERROR LOG ==="] + error_lines + ["", "=== NGINX ACCESS LOG ==="] + access_lines
+    )
+    return {"logs": "\n".join(combined)}
+
+
 # Config key/value endpoints
 @router.get("/{key}")
 def get_config_value(

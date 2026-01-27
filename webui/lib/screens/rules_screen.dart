@@ -30,25 +30,23 @@ class _RulesScreenState extends State<RulesScreen> {
 
   Future<void> _loadCertificates() async {
     try {
-      final certs = await context.read<CertificateProvider>().fetchCertificates();
-      setState(() {
-        _certificates = context.read<CertificateProvider>().certificates;
-        // Set default certificate as selected
-        final defaultCert = _certificates.firstWhere(
-          (c) => c.isDefault,
-          orElse: () => _certificates.isNotEmpty ? _certificates.first : Certificate(
-            id: 0,
-            name: '',
-            domain: '',
-            description: '',
-            expiryDate: DateTime.now(),
-            isDefault: false,
-          ),
-        );
-        _selectedCertificateId = defaultCert.id != 0 ? defaultCert.id : null;
-      });
+      await context.read<CertificateProvider>().fetchCertificates();
+      if (mounted) {
+        setState(() {
+          _certificates = context.read<CertificateProvider>().certificates;
+          // Set default certificate as selected (null means use default)
+          final defaultCert = _certificates.where((c) => c.isDefault).firstOrNull;
+          _selectedCertificateId = defaultCert?.id;
+        });
+      }
     } catch (e) {
       // Silently fail - certificates are optional
+      if (mounted) {
+        setState(() {
+          _certificates = [];
+          _selectedCertificateId = null;
+        });
+      }
     }
   }
 
@@ -62,19 +60,9 @@ class _RulesScreenState extends State<RulesScreen> {
   void _showCreateDialog() {
     _domainController.clear();
     _backendIdController.clear();
-    // Reset to default certificate
-    final defaultCert = _certificates.firstWhere(
-      (c) => c.isDefault,
-      orElse: () => _certificates.isNotEmpty ? _certificates.first : Certificate(
-        id: 0,
-        name: '',
-        domain: '',
-        description: '',
-        expiryDate: DateTime.now(),
-        isDefault: false,
-      ),
-    );
-    _selectedCertificateId = defaultCert.id != 0 ? defaultCert.id : null;
+    // Reset to default certificate (null means use default)
+    final defaultCert = _certificates.where((c) => c.isDefault).firstOrNull;
+    _selectedCertificateId = defaultCert?.id;
 
     showDialog(
       context: context,
@@ -172,10 +160,12 @@ class _RulesScreenState extends State<RulesScreen> {
   void _showEditDialog(ProxyRule rule) {
     _domainController.text = rule.domain;
     _backendIdController.text = rule.backendId.toString();
+    _selectedCertificateId = rule.certificateId;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         title: const Text('Edit Proxy Rule'),
         content: SingleChildScrollView(
           child: Column(
@@ -190,6 +180,41 @@ class _RulesScreenState extends State<RulesScreen> {
                 controller: _backendIdController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Backend ID'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                value: _selectedCertificateId,
+                decoration: const InputDecoration(
+                  labelText: 'SSL Certificate',
+                  hintText: 'Select certificate (optional)',
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Use default certificate'),
+                  ),
+                  ..._certificates.map((cert) => DropdownMenuItem<int?>(
+                    value: cert.id,
+                    child: Row(
+                      children: [
+                        if (cert.isDefault)
+                          const Icon(Icons.star, size: 16, color: Colors.amber),
+                        if (cert.isDefault) const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            '${cert.name} (${cert.domain})',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCertificateId = value;
+                  });
+                },
               ),
             ],
           ),
@@ -213,12 +238,14 @@ class _RulesScreenState extends State<RulesScreen> {
                 id: rule.id,
                 domain: _domainController.text.trim(),
                 backendId: int.parse(backendIdText),
+                certificateId: _selectedCertificateId,
               );
               if (mounted) Navigator.pop(context);
             },
             child: const Text('Update'),
-          ),
-        ],
+          ],
+        ),
+        ),
       ),
     );
   }

@@ -54,7 +54,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Dashboard'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/dashboard');
+              Navigator.pushNamed(context, '/dashboard');
             },
           ),
           ListTile(
@@ -62,7 +62,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Backend Servers'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/backends');
+              Navigator.pushNamed(context, '/backends');
             },
           ),
           ListTile(
@@ -70,7 +70,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Proxy Rules'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/rules');
+              Navigator.pushNamed(context, '/rules');
             },
           ),
           ListTile(
@@ -78,7 +78,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('SSL Certificates'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/certificates');
+              Navigator.pushNamed(context, '/certificates');
             },
           ),
           Consumer<AuthProvider>(
@@ -92,7 +92,7 @@ class AppDrawer extends StatelessWidget {
                       title: const Text('Users'),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacementNamed(context, '/users');
+                        Navigator.pushNamed(context, '/users');
                       },
                     ),
                     ListTile(
@@ -100,7 +100,7 @@ class AppDrawer extends StatelessWidget {
                       title: const Text('Audit Logs'),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushReplacementNamed(context, '/audit');
+                        Navigator.pushNamed(context, '/audit');
                       },
                     ),
                   ],
@@ -113,10 +113,12 @@ class AppDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              context.read<AuthProvider>().logout();
-              Navigator.pushReplacementNamed(context, '/login');
+              await context.read<AuthProvider>().logout();
+              if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
             },
           ),
         ],
