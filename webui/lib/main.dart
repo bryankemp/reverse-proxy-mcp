@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import 'services/storage_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'widgets/password_change_dialog.dart';
+import 'models/models.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1445,6 +1447,131 @@ class CertificateListDialog extends StatelessWidget {
 class HealthCheckDialog extends StatelessWidget {
   const HealthCheckDialog();
 
+  Future<void> _downloadNginxConfig(BuildContext context) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final config = await apiService.getNginxConfig();
+      
+      // Create blob and trigger download
+      final bytes = config.codeUnits;
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(
+        href: url,
+      )
+        ..setAttribute('download', 'nginx.conf')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configuration downloaded')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _viewLogs(BuildContext context) async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final logs = await apiService.getLogs();
+      
+      if (!context.mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          child: Container(
+            width: 900,
+            height: 700,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'System Logs',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.download),
+                          tooltip: 'Download Logs',
+                          onPressed: () => _downloadLogs(ctx, logs),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.all(12),
+                    child: SingleChildScrollView(
+                      child: SelectableText(
+                        logs.isEmpty ? 'No logs available' : logs,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: Colors.greenAccent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load logs: $e')),
+        );
+      }
+    }
+  }
+
+  void _downloadLogs(BuildContext context, String logs) {
+    try {
+      final bytes = logs.codeUnits;
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(
+        href: url,
+      )
+        ..setAttribute('download', 'reverse-proxy-mcp.log')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logs downloaded')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -1464,15 +1591,26 @@ class HealthCheckDialog extends StatelessWidget {
             const Text('✓ Database is connected'),
             const Text('✓ Nginx is healthy'),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _showNginxConfig(context),
                   icon: const Icon(Icons.code),
-                  label: const Text('View Nginx Config'),
+                  label: const Text('View Config'),
                 ),
-                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _downloadNginxConfig(context),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download Config'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _viewLogs(context),
+                  icon: const Icon(Icons.article),
+                  label: const Text('View Logs'),
+                ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Close'),

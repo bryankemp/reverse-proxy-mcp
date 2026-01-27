@@ -613,6 +613,31 @@ class ApiService {
       );
     }
   }
+
+  /// Get system logs
+  Future<String> getLogs({int lines = 1000}) async {
+    try {
+      final response = await _dio.get(
+        '/config/logs',
+        queryParameters: {'lines': lines},
+      );
+      // If the response is a string, return it directly
+      if (response.data is String) {
+        return response.data as String;
+      }
+      // If it's a JSON object with a logs field
+      if (response.data is Map && response.data['logs'] != null) {
+        return response.data['logs'] as String;
+      }
+      return response.data.toString();
+    } on DioException catch (e) {
+      throw ApiException(
+        message: e.response?.data?['detail'] ?? 'Failed to fetch logs',
+        statusCode: e.response?.statusCode,
+        originalError: e,
+      );
+    }
+  }
 }
 
 /// Logging interceptor for Dio

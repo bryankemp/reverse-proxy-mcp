@@ -14,6 +14,8 @@ class RulesScreen extends StatefulWidget {
 class _RulesScreenState extends State<RulesScreen> {
   late TextEditingController _domainController;
   late TextEditingController _backendIdController;
+  int? _selectedCertificateId;
+  List<Certificate> _certificates = [];
 
   @override
   void initState() {
@@ -22,7 +24,32 @@ class _RulesScreenState extends State<RulesScreen> {
     _backendIdController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RuleProvider>().fetchRules();
+      _loadCertificates();
     });
+  }
+
+  Future<void> _loadCertificates() async {
+    try {
+      final certs = await context.read<CertificateProvider>().fetchCertificates();
+      setState(() {
+        _certificates = context.read<CertificateProvider>().certificates;
+        // Set default certificate as selected
+        final defaultCert = _certificates.firstWhere(
+          (c) => c.isDefault,
+          orElse: () => _certificates.isNotEmpty ? _certificates.first : Certificate(
+            id: 0,
+            name: '',
+            domain: '',
+            description: '',
+            expiryDate: DateTime.now(),
+            isDefault: false,
+          ),
+        );
+        _selectedCertificateId = defaultCert.id != 0 ? defaultCert.id : null;
+      });
+    } catch (e) {
+      // Silently fail - certificates are optional
+    }
   }
 
   @override
@@ -35,58 +62,109 @@ class _RulesScreenState extends State<RulesScreen> {
   void _showCreateDialog() {
     _domainController.clear();
     _backendIdController.clear();
+    // Reset to default certificate
+    final defaultCert = _certificates.firstWhere(
+      (c) => c.isDefault,
+      orElse: () => _certificates.isNotEmpty ? _certificates.first : Certificate(
+        id: 0,
+        name: '',
+        domain: '',
+        description: '',
+        expiryDate: DateTime.now(),
+        isDefault: false,
+      ),
+    );
+    _selectedCertificateId = defaultCert.id != 0 ? defaultCert.id : null;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Proxy Rule'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _domainController,
-                decoration: const InputDecoration(
-                  labelText: 'Domain',
-                  hintText: 'e.g., example.com',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add Proxy Rule'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _domainController,
+                  decoration: const InputDecoration(
+                    labelText: 'Domain',
+                    hintText: 'e.g., example.com',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _backendIdController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Backend ID',
-                  hintText: 'e.g., 1',
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _backendIdController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Backend ID',
+                    hintText: 'e.g., 1',
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  value: _selectedCertificateId,
+                  decoration: const InputDecoration(
+                    labelText: 'SSL Certificate',
+                    hintText: 'Select certificate (optional)',
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Use default certificate'),
+                    ),
+                    ..._certificates.map((cert) => DropdownMenuItem<int?>(
+                      value: cert.id,
+                      child: Row(
+                        children: [
+                          if (cert.isDefault)
+                            const Icon(Icons.star, size: 16, color: Colors.amber),
+                          if (cert.isDefault) const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${cert.name} (${cert.domain})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCertificateId = value;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final backendIdText = _backendIdController.text.trim();
-              if (_domainController.text.trim().isEmpty ||
-                  backendIdText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill in all fields')),
+            ElevatedButton(
+              onPressed: () async {
+                final backendIdText = _backendIdController.text.trim();
+                if (_domainController.text.trim().isEmpty ||
+                    backendIdText.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please fill in all fields')),
+                  );
+                  return;
+                }
+                await context.read<RuleProvider>().createRule(
+                  domain: _domainController.text.trim(),
+                  backendId: int.parse(backendIdText),
+                  certificateId: _selectedCertificateId,
                 );
-                return;
-              }
-              await context.read<RuleProvider>().createRule(
-                domain: _domainController.text.trim(),
-                backendId: int.parse(backendIdText),
-              );
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
