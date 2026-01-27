@@ -55,6 +55,7 @@ dependencies:
   # Utilities
   logger: ^2.1.0
   uuid: ^4.0.0
+  file_picker: ^8.1.6
 
 dev_dependencies:
   flutter_test:

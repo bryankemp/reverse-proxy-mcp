@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/other_providers.dart';
 import '../models/models.dart';
 import '../widgets/app_drawer.dart';
@@ -16,6 +17,9 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   late TextEditingController _domainController;
   late TextEditingController _certController;
   late TextEditingController _keyController;
+  String? _certFileName;
+  String? _keyFileName;
+  bool _isDefault = false;
 
   @override
   void initState() {
@@ -38,11 +42,64 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     super.dispose();
   }
 
+  Future<void> _pickCertFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['crt', 'pem', 'cer', 'cert'],
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final content = String.fromCharCodes(bytes);
+        setState(() {
+          _certController.text = content;
+          _certFileName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking certificate file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickKeyFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['key', 'pem'],
+        withData: true,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final content = String.fromCharCodes(bytes);
+        setState(() {
+          _keyController.text = content;
+          _keyFileName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking key file: $e')),
+        );
+      }
+    }
+  }
+
   void _showCreateDialog() {
     _nameController.clear();
     _domainController.clear();
     _certController.clear();
     _keyController.clear();
+    _certFileName = null;
+    _keyFileName = null;
+    _isDefault = false;
 
     showDialog(
       context: context,
@@ -68,22 +125,59 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _certController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Certificate',
-                  hintText: '-----BEGIN CERTIFICATE-----',
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _certController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Certificate',
+                        hintText: _certFileName ?? '-----BEGIN CERTIFICATE-----',
+                      ),
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _pickCertFile,
+                    icon: const Icon(Icons.file_upload),
+                    label: const Text('Pick File'),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _keyController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Private Key',
-                  hintText: '-----BEGIN PRIVATE KEY-----',
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _keyController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Private Key',
+                        hintText: _keyFileName ?? '-----BEGIN PRIVATE KEY-----',
+                      ),
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _pickKeyFile,
+                    icon: const Icon(Icons.file_upload),
+                    label: const Text('Pick File'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('Set as Default Certificate'),
+                value: _isDefault,
+                onChanged: (value) {
+                  setState(() {
+                    _isDefault = value ?? false;
+                  });
+                },
+                controlAffinity: ListTileControlAffinity.leading,
               ),
             ],
           ),
